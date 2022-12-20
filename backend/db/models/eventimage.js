@@ -9,7 +9,8 @@ module.exports = (sequelize, DataTypes) => {
 		 */
 		static associate(models) {
 			// define association here
-			// belongs to ONE specific events.
+			// eventImage can belong to one event
+			EventImage.belongsTo(models.Event, { foreignKey: "eventId" });
 		}
 	}
 	EventImage.init(
