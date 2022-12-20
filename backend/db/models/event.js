@@ -15,6 +15,9 @@ module.exports = (sequelize, DataTypes) => {
 				through: models.Attendance,
 				foreignKey: "eventId",
 			});
+
+			//also act as a join table to Group and Venue
+			
 		}
 	}
 	Event.init(
