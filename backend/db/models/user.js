@@ -41,6 +41,11 @@ module.exports = (sequelize, DataTypes) => {
 		}
 		static associate(models) {
 			// define association here
+			// user belongs to many Events through Attendances
+			User.belongsToMany(models.Event, {
+				through: models.Attendance,
+				foreignKey: "userId",
+			});
 		}
 	}
 
