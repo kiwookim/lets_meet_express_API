@@ -50,5 +50,3 @@ module.exports = {
 		);
 	},
 };
-// was right below 'use strict'
-// /** @type {import('sequelize-cli').Migration} */
