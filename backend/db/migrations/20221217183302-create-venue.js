@@ -1,4 +1,5 @@
 "use strict";
+
 /** @type {import('sequelize-cli').Migration} */
 let options = {};
 if (process.env.NODE_ENV === "production") {
@@ -7,7 +8,7 @@ if (process.env.NODE_ENV === "production") {
 module.exports = {
 	async up(queryInterface, Sequelize) {
 		await queryInterface.createTable(
-			"Memberships",
+			"Venues",
 			{
 				id: {
 					allowNull: false,
@@ -15,23 +16,23 @@ module.exports = {
 					primaryKey: true,
 					type: Sequelize.INTEGER,
 				},
-				userId: {
-					type: Sequelize.INTEGER,
-					allowNull: false,
-					references: {
-						model: "Users",
-					},
-				},
 				groupId: {
 					type: Sequelize.INTEGER,
-					allowNull: false,
-					references: {
-						model: "Groups",
-					},
 				},
-				status: {
-					type: Sequelize.ENUM("co-host", "member", "pending"),
-					allowNull: false,
+				address: {
+					type: Sequelize.STRING,
+				},
+				city: {
+					type: Sequelize.STRING,
+				},
+				state: {
+					type: Sequelize.STRING,
+				},
+				lat: {
+					type: Sequelize.DECIMAL,
+				},
+				lng: {
+					type: Sequelize.DECIMAL,
 				},
 				createdAt: {
 					allowNull: false,
@@ -48,7 +49,7 @@ module.exports = {
 		);
 	},
 	async down(queryInterface, Sequelize) {
-		options.tableName = "Memberships";
+		options.tableName = "Venues";
 		await queryInterface.dropTable(options);
 	},
 };

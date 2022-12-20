@@ -20,6 +20,8 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Events",
+						foreignKey: "eventId",
+						onDelete: "CASCADE",
 					},
 				},
 				userId: {
@@ -27,6 +29,7 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Users",
+						onDelete: "CASCADE",
 					},
 				},
 				status: {
