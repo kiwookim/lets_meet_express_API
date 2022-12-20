@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
 			});
 
 			//also act as a join table to Group and Venue
-			
+
 		}
 	}
 	Event.init(
