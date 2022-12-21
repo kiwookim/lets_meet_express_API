@@ -25,7 +25,9 @@ module.exports = (sequelize, DataTypes) => {
 				},
 			});
 			if (user && user.validatePassword(password)) {
-				return await User.scope("currentUser").findByPk(user.id);
+				return await User.scope(["defaultScope", "loginUser"]).findByPk(
+					user.id
+				);
 			}
 		}
 		static async signup({ firstName, lastName, username, email, password }) {
@@ -37,6 +39,8 @@ module.exports = (sequelize, DataTypes) => {
 				email,
 				hashedPassword,
 			});
+			// original authenticate me code
+			// return await User.scope("currentUser").findByPk(user.id);
 			return await User.scope("currentUser").findByPk(user.id);
 		}
 		static associate(models) {
@@ -99,15 +103,17 @@ module.exports = (sequelize, DataTypes) => {
 			modelName: "User",
 			defaultScope: {
 				attributes: {
-					exclude: ["hashedPassword", "email", "createdAt", "updatedAt"],
+					exclude: ["hashedPassword", "createdAt", "updatedAt"],
 				},
 			},
 			scopes: {
 				currentUser: {
-					attributes: { exclude: ["hashedPassword"] },
+					attributes: {
+						exclude: ["hashedPassword", "username", "createdAt", "updatedAt"],
+					},
 				},
 				loginUser: {
-					attributes: {},
+					attributes: { exclude: ["createdAt", "updatedAt"] },
 				},
 			},
 		}

@@ -24,11 +24,21 @@ router.post("/", validateLogin, async (req, res, next) => {
 
 	const user = await User.login({ credential, password });
 
+	//original authenticate me code
+	// if (!user) {
+	// 	const err = new Error("Login failed");
+	// 	err.status = 401;
+	// 	err.title = "Login failed";
+	// 	err.errors = ["The provided credentials were invalid."];
+	// 	return next(err);
+	// }
+
+	// ki cocde
 	if (!user) {
-		const err = new Error("Login failed");
+		const err = new Error("Invalid credentials");
 		err.status = 401;
-		err.title = "Login failed";
-		err.errors = ["The provided credentials were invalid."];
+		err.title = "Invalid credentials";
+		err.message = "Invalid credentials";
 		return next(err);
 	}
 
