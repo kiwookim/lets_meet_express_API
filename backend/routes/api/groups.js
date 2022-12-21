@@ -57,10 +57,18 @@ router.get("/current", requireAuth, async (req, res) => {
 	}
 	return res.json({ Groups: payload });
 });
-router.get("/:groupId", async (req, res) => {
+router.get("/:groupId", async (req, res, next) => {
 	const groupId = req.params.groupId;
 	//find Group by id
 	let thisGroup = await Group.findByPk(groupId);
+
+	if (!thisGroup) {
+		const err = new Error();
+		err.message = "Group could not be found";
+		err.status = 404;
+		next(err);
+	}
+
 	//convert it to POJO
 	thisGroup = thisGroup.toJSON();
 	//find out numMembers
