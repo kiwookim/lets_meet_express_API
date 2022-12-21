@@ -6,7 +6,6 @@ router.get("/", async (req, res, next) => {
 	const events = await Event.findAll();
 	events.forEach(async (event) => {
 		const group = await event.getGroup();
-		console.log(group.toJSON());
 	});
 
 	return res.json(events);
