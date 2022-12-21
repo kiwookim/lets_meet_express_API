@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const { Group, GroupImage, Membership } = require("../../db/models");
+const {
+	Group,
+	GroupImage,
+	Membership,
+	User,
+	Venue,
+} = require("../../db/models");
 const { restoreUser, requireAuth } = require("../../utils/auth");
 
 router.get("/", async (req, res) => {
@@ -51,49 +57,50 @@ router.get("/current", requireAuth, async (req, res) => {
 	}
 	return res.json({ Groups: payload });
 });
-
+router.get("/:groupId", async (req, res) => {
+	const groupId = req.params.groupId;
+	//find Group by id
+	let thisGroup = await Group.findByPk(groupId);
+	//convert it to POJO
+	thisGroup = thisGroup.toJSON();
+	//find out numMembers
+	thisGroup.numMembers = await Membership.count({
+		where: {
+			groupId: groupId,
+			status: "member",
+		},
+	});
+	//get associated GroupImage data
+	const groupImageData = await GroupImage.findAll({
+		where: {
+			groupId: groupId,
+		},
+		attributes: ["id", "url", "preview"],
+	});
+	let imgPayload = [];
+	for (let imageData of groupImageData) {
+		imgPayload.push(imageData.toJSON());
+	}
+	thisGroup.GroupImages = imgPayload;
+	//get user info by organizerId and ALIAS(rename it)
+	let user = await User.findOne({
+		where: { id: thisGroup.organizerId },
+		attributes: ["id", "firstName", "lastName"],
+	});
+	user = user.toJSON();
+	thisGroup.Organizer = user;
+	//get Venues info by groupId
+	const venues = await Venue.findAll({
+		where: {
+			groupId: thisGroup.id,
+		},
+		attributes: { exclude: ["createdAt", "updatedAt"] },
+	});
+	const venuePayload = [];
+	for (let venue of venues) {
+		venuePayload.push(venue.toJSON());
+	}
+	thisGroup.Venues = venuePayload;
+	return res.json(thisGroup);
+});
 module.exports = router;
-
-//expected format
-
-// {
-//   "id": 1,
-//   "organizerId": 1,
-//   "name": "Evening Tennis on the Water",
-//   "about": "Enjoy rounds of tennis with a tight-nit group of people on the water facing the Brooklyn Bridge. Singles or doubles.",
-//   "type": "In person",
-//   "private": true,
-//   "city": "New York",
-//   "state": "NY",
-//   "createdAt": "2021-11-19 20:39:36",
-//   "updatedAt": "2021-11-19 20:39:36",
-//   "numMembers": 10,
-//   "GroupImages": [
-//     {
-//       "id": 1,
-//       "url": "image url",
-//       "preview": true
-//     },
-//     {
-//       "id": 2,
-//       "url": "image url",
-//       "preview": false
-//     }
-//   ],
-//   "Organizer": {
-//     "id": 1,
-//     "firstName": "John",
-//     "lastName": "Smith"
-//   },
-//   "Venues": [
-//     {
-//       "id": 1,
-//       "groupId": 1,
-//       "address": "123 Disney Lane",
-//       "city": "New York",
-//       "state": "NY",
-//       "lat": 37.7645358,
-//       "lng": -122.4730327
-//     }
-//   ]
-// }
