@@ -162,4 +162,38 @@ router.post(
 	}
 );
 
+//Add an Image to a Group based on the Group's id
+router.post("/:groupId/images", requireAuth, async (req, res, next) => {
+	const { url, preview } = req.body;
+	const specificGroup = await Group.findByPk(req.params.groupId);
+	if (!specificGroup) {
+		const err = new Error("");
+		err.status = 404;
+		err.message = "Group could not be found";
+		next(err);
+	}
+
+	// Only the organizer of the group is authorized to add an image
+	// authorization.....
+
+	if (req.user.id !== specificGroup.organizerId) {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not authorized";
+		next(err);
+	}
+
+	let newImage = await GroupImage.create({
+		url,
+		preview,
+		groupId: req.params.groupId,
+	});
+	const responsePayload = {};
+	newImage = newImage.toJSON();
+	responsePayload.id = newImage.id;
+	responsePayload.url = newImage.url;
+	responsePayload.preview = newImage.preview;
+	return res.json(responsePayload);
+});
+
 module.exports = router;
