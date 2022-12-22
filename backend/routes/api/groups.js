@@ -22,14 +22,18 @@ router.get("/", async (req, res) => {
 				status: "member",
 			},
 		});
-		let url = await GroupImage.findOne({
+		let url = await GroupImage.findAll({
 			where: {
 				groupId: group.id,
+				preview: true,
 			},
 			attributes: ["url"],
 		});
-		if (url) {
-			group.previewImage = url.url;
+		const lastPreviewImg = url[url.length - 1];
+		if (url.length) {
+			group.previewImage = lastPreviewImg.url;
+		} else {
+			group.previewImage = "No Preview Image Available";
 		}
 
 		payload.push(group);
@@ -52,14 +56,27 @@ router.get("/current", requireAuth, async (req, res) => {
 				status: "member",
 			},
 		});
-		const url = await GroupImage.findOne({
+		// const url = await GroupImage.findOne({
+		// 	where: {
+		// 		groupId: group.id,
+		// 	},
+		// 	attributes: ["url"],
+		// });
+		// if (url) {
+		// 	group.previewImage = url.url;
+		// }
+		let url = await GroupImage.findAll({
 			where: {
 				groupId: group.id,
+				preview: true,
 			},
 			attributes: ["url"],
 		});
-		if (url) {
-			group.previewImage = url.url;
+		const lastPreviewImg = url[url.length - 1];
+		if (url.length) {
+			group.previewImage = lastPreviewImg.url;
+		} else {
+			group.previewImage = "No Preview Image Available";
 		}
 
 		payload.push(group);
@@ -75,7 +92,7 @@ router.get("/:groupId", async (req, res, next) => {
 		const err = new Error();
 		err.message = "Group could not be found";
 		err.status = 404;
-		next(err);
+		return next(err);
 	}
 
 	//convert it to POJO
@@ -171,7 +188,7 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 		const err = new Error("");
 		err.status = 404;
 		err.message = "Group could not be found";
-		next(err);
+		return next(err);
 	}
 
 	// Only the organizer of the group is authorized to add an image
@@ -181,7 +198,7 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 		const err = new Error("");
 		err.status = 403;
 		err.message = "Not authorized";
-		next(err);
+		return next(err);
 	}
 
 	let newImage = await GroupImage.create({
@@ -189,6 +206,9 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 		preview,
 		groupId: req.params.groupId,
 	});
+	if (newImage.preview === true) {
+		Group.previewImage = newImage.preview;
+	}
 	const responsePayload = {};
 	newImage = newImage.toJSON();
 	responsePayload.id = newImage.id;
@@ -209,7 +229,7 @@ router.put(
 			const err = new Error("");
 			err.status = 404;
 			err.message = "Group could not be found";
-			next(err);
+			return next(err);
 		}
 
 		// Only the organizer of the group is authorized edit group
@@ -217,7 +237,7 @@ router.put(
 			const err = new Error("");
 			err.status = 403;
 			err.message = "Not authorized";
-			next(err);
+			return next(err);
 		} else {
 			const updatedGroup = await specificGroup.update({
 				name,
@@ -238,7 +258,7 @@ router.delete("/:groupId", requireAuth, async (req, res, next) => {
 		const err = new Error("");
 		err.status = 404;
 		err.message = "Group could not be found";
-		next(err);
+		return next(err);
 	}
 
 	// Only the organizer of the group is authorized to delete group
