@@ -56,12 +56,14 @@ module.exports = {
 		 * Example:
 		 * await queryInterface.bulkDelete('People', null, {});
 		 */
-		options.tableName = "Users";
+		options.tableName = "Venues";
 		const Op = Sequelize.Op;
 		await queryInterface.bulkDelete(
 			options,
 			{
-				address: { [Op.in]: [1, 2, 3] },
+				address: {
+					[Op.in]: ["123 Disney Lane", "456 Universal Lane", "789 Knotts Lane"],
+				},
 			},
 			{}
 		);
