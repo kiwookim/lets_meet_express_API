@@ -44,6 +44,14 @@ module.exports = {
 					lat: 17.764,
 					lng: -22.473,
 				},
+				{
+					groupId: 1,
+					address: "my house",
+					city: "Los Angeles",
+					state: "CA",
+					lat: 37.764,
+					lng: -122.473,
+				},
 			],
 			{}
 		);
@@ -62,7 +70,12 @@ module.exports = {
 			options,
 			{
 				address: {
-					[Op.in]: ["123 Disney Lane", "456 Universal Lane", "789 Knotts Lane"],
+					[Op.in]: [
+						"123 Disney Lane",
+						"456 Universal Lane",
+						"789 Knotts Lane",
+						"my house",
+					],
 				},
 			},
 			{}
