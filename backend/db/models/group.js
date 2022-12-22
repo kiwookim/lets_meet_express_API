@@ -9,9 +9,18 @@ module.exports = (sequelize, DataTypes) => {
 		 */
 		static associate(models) {
 			// define association here
-			Group.belongsTo(models.User, { foreignKey: "organizerId" });
-			Group.hasMany(models.Venue, { foreignKey: "groupId" });
-			Group.hasMany(models.GroupImage, { foreignKey: "groupId" });
+			Group.belongsTo(models.User, {
+				foreignKey: "organizerId",
+				onDelete: "cascade",
+			});
+			Group.hasMany(models.Venue, {
+				foreignKey: "groupId",
+				onDelete: "cascade",
+			});
+			Group.hasMany(models.GroupImage, {
+				foreignKey: "groupId",
+				onDelete: "cascade",
+			});
 			Group.belongsToMany(models.User, {
 				foreignKey: "groupId",
 				through: models.Membership,

@@ -22,14 +22,18 @@ router.get("/", async (req, res) => {
 				status: "member",
 			},
 		});
-		let url = await GroupImage.findOne({
+		let url = await GroupImage.findAll({
 			where: {
 				groupId: group.id,
+				preview: true,
 			},
 			attributes: ["url"],
 		});
-		if (url) {
-			group.previewImage = url.url;
+		const lastPreviewImg = url[url.length - 1];
+		if (url.length) {
+			group.previewImage = lastPreviewImg.url;
+		} else {
+			group.previewImage = "No Preview Image Available";
 		}
 
 		payload.push(group);
@@ -52,14 +56,27 @@ router.get("/current", requireAuth, async (req, res) => {
 				status: "member",
 			},
 		});
-		const url = await GroupImage.findOne({
+		// const url = await GroupImage.findOne({
+		// 	where: {
+		// 		groupId: group.id,
+		// 	},
+		// 	attributes: ["url"],
+		// });
+		// if (url) {
+		// 	group.previewImage = url.url;
+		// }
+		let url = await GroupImage.findAll({
 			where: {
 				groupId: group.id,
+				preview: true,
 			},
 			attributes: ["url"],
 		});
-		if (url) {
-			group.previewImage = url.url;
+		const lastPreviewImg = url[url.length - 1];
+		if (url.length) {
+			group.previewImage = lastPreviewImg.url;
+		} else {
+			group.previewImage = "No Preview Image Available";
 		}
 
 		payload.push(group);
@@ -75,7 +92,7 @@ router.get("/:groupId", async (req, res, next) => {
 		const err = new Error();
 		err.message = "Group could not be found";
 		err.status = 404;
-		next(err);
+		return next(err);
 	}
 
 	//convert it to POJO
@@ -123,11 +140,12 @@ router.get("/:groupId", async (req, res, next) => {
 const validateCreateGroup = [
 	// also validate firstName and lastName
 	check("name")
-		.exists({ checkFalsy: true })
-		.isLength({ max: 60 })
-		.withMessage("Name must be 60 characters or less"),
+		// .exists({ checkFalsy: true })
+		.exists()
+		.isLength({ max: 60, min: 1 })
+		.withMessage("Name must be 60 characters or less and required"),
 	check("about")
-		.exists({ checkFalsy: true })
+		.exists()
 		.isLength({ min: 50 })
 		.withMessage("About must be 50 characters or more"),
 	check("type")
@@ -161,5 +179,102 @@ router.post(
 		return res.json(newGroup);
 	}
 );
+
+//Add an Image to a Group based on the Group's id
+router.post("/:groupId/images", requireAuth, async (req, res, next) => {
+	const { url, preview } = req.body;
+	const specificGroup = await Group.findByPk(req.params.groupId);
+	if (!specificGroup) {
+		const err = new Error("");
+		err.status = 404;
+		err.message = "Group could not be found";
+		return next(err);
+	}
+
+	// Only the organizer of the group is authorized to add an image
+	// authorization.....
+	console.log(req.user.id);
+	if (req.user.id !== specificGroup.organizerId) {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not authorized";
+		return next(err);
+	}
+
+	let newImage = await GroupImage.create({
+		url,
+		preview,
+		groupId: req.params.groupId,
+	});
+	if (newImage.preview === true) {
+		Group.previewImage = newImage.preview;
+	}
+	const responsePayload = {};
+	newImage = newImage.toJSON();
+	responsePayload.id = newImage.id;
+	responsePayload.url = newImage.url;
+	responsePayload.preview = newImage.preview;
+	return res.json(responsePayload);
+});
+
+//Edit a group
+router.put(
+	"/:groupId",
+	requireAuth,
+	validateCreateGroup,
+	async (req, res, next) => {
+		const { name, about, type, private, city, state } = req.body;
+		const specificGroup = await Group.findByPk(req.params.groupId);
+		if (!specificGroup) {
+			const err = new Error("");
+			err.status = 404;
+			err.message = "Group could not be found";
+			return next(err);
+		}
+
+		// Only the organizer of the group is authorized edit group
+		if (req.user.id !== specificGroup.organizerId) {
+			const err = new Error("");
+			err.status = 403;
+			err.message = "Not authorized";
+			return next(err);
+		} else {
+			const updatedGroup = await specificGroup.update({
+				name,
+				about,
+				type,
+				private,
+				city,
+				state,
+			});
+			return res.json(updatedGroup);
+		}
+	}
+);
+
+router.delete("/:groupId", requireAuth, async (req, res, next) => {
+	const specificGroup = await Group.findByPk(req.params.groupId);
+	if (!specificGroup) {
+		const err = new Error("");
+		err.status = 404;
+		err.message = "Group could not be found";
+		return next(err);
+	}
+
+	// Only the organizer of the group is authorized to delete group
+	if (req.user.id !== specificGroup.organizerId) {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not authorized";
+		return next(err);
+	} else {
+		await specificGroup.destroy();
+	}
+
+	return res.json({
+		message: "Successfully deleted",
+		statusCode: 200,
+	});
+});
 
 module.exports = router;

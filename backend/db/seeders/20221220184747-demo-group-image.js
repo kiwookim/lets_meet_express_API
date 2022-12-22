@@ -28,7 +28,7 @@ module.exports = {
 				{
 					groupId: 2,
 					url: "group2 url",
-					preview: false,
+					preview: true,
 				},
 				{
 					groupId: 3,
