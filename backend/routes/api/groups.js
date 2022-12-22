@@ -291,11 +291,11 @@ router.get("/:groupId/venues", requireAuth, async (req, res, next) => {
 		return next(err);
 	}
 	//Current User must be the organizer of the group or a member of the group with a status of "co-host"
-	const coHost = await Membership.findOne({ where: { userID: currUser } });
+	const coHost = await Membership.findOne({ where: { groupId: groupId } });
 
 	const isHost = coHost.status === "co-host";
 
-	if (currUser !== specificGroup.organizerId || !isHost) {
+	if (currUser !== specificGroup.organizerId || isHost !== true) {
 		const err = new Error("");
 		err.status = 403;
 		err.message = "Not authorized";
@@ -317,5 +317,60 @@ router.get("/:groupId/venues", requireAuth, async (req, res, next) => {
 		Venues: venuePayload,
 	});
 });
+//venue body validation
+const validateVenue = [
+	check("address").notEmpty().withMessage("Street address is required"),
+	check("city").notEmpty().withMessage("City is required"),
+	check("state").notEmpty().withMessage("State is required"),
+	check("lat").not().isString().withMessage("Latitude is not valid"),
+	check("lng").not().isString().withMessage("Longitute is not valid"),
+	handleValidationErrors,
+];
+
+// Create a new Venue for a Group specified by its id
+router.post(
+	"/:groupId/venues",
+	requireAuth,
+	validateVenue,
+	async (req, res, next) => {
+		const groupId = req.params.groupId;
+		const currUserId = req.user.id;
+		const specificGroup = await Group.findByPk(groupId);
+		const { address, city, state, lat, lng } = req.body;
+		//Error response: Couldn't find a Group with the specified id
+		if (!specificGroup) {
+			const err = new Error("");
+			err.status = 404;
+			err.message = "Group could not be found";
+			return next(err);
+		}
+		//Current User must be the organizer of the group or a member of the group with a status of "co-host"
+		const coHost = await Membership.findOne({ where: { groupId: groupId } });
+
+		const isHost = coHost.status === "co-host";
+
+		if (currUserId !== specificGroup.organizerId || isHost !== true) {
+			const err = new Error("");
+			err.status = 403;
+			err.message = "Not authorized";
+			return next(err);
+		}
+		let newVenue = await Venue.create({
+			address,
+			city,
+			state,
+			lat,
+			lng,
+			groupId: groupId,
+		});
+		const latestInsert = await Venue.findAll({
+			limit: 1,
+			order: [["createdAt", "DESC"]],
+			attributes: { exclude: ["createdAt", "updatedAt"] },
+		});
+
+		return res.json(...latestInsert);
+	}
+);
 
 module.exports = router;
