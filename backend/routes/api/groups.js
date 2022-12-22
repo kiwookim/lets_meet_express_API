@@ -147,7 +147,7 @@ router.post(
 		// const currUserId = req.user.id;
 		// console.log(currUserId);
 		const { name, about, type, private, city, state } = req.body;
-
+		
 		const newGroup = await Group.create({
 			name,
 			about,
