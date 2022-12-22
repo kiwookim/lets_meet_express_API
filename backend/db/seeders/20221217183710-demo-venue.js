@@ -70,7 +70,12 @@ module.exports = {
 			options,
 			{
 				address: {
-					[Op.in]: ["123 Disney Lane", "456 Universal Lane", "789 Knotts Lane"],
+					[Op.in]: [
+						"123 Disney Lane",
+						"456 Universal Lane",
+						"789 Knotts Lane",
+						"my house",
+					],
 				},
 			},
 			{}

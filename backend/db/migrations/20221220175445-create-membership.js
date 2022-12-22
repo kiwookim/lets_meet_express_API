@@ -20,6 +20,7 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Users",
+						// key: "userId",
 					},
 					onDelete: "cascade",
 				},
@@ -28,6 +29,7 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Groups",
+						// key: "groupId",
 					},
 					onDelete: "cascade",
 				},

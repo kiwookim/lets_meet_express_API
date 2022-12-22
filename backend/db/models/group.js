@@ -22,12 +22,12 @@ module.exports = (sequelize, DataTypes) => {
 				onDelete: "cascade",
 			});
 			Group.belongsToMany(models.User, {
-				foreignKey: "groupId",
 				through: models.Membership,
+				foreignKey: "groupId",
 			});
 			Group.belongsToMany(models.Venue, {
-				foreignKey: "groupId",
 				through: models.Event,
+				foreignKey: "groupId",
 			});
 		}
 	}
