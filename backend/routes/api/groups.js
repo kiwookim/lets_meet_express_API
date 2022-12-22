@@ -1,4 +1,6 @@
 const express = require("express");
+const { check } = require("express-validator");
+const { handleValidationErrors } = require("../../utils/validation");
 const router = express.Router();
 const {
 	Group,
@@ -20,16 +22,20 @@ router.get("/", async (req, res) => {
 				status: "member",
 			},
 		});
-		const url = await GroupImage.findOne({
+		let url = await GroupImage.findOne({
 			where: {
 				groupId: group.id,
 			},
 			attributes: ["url"],
 		});
-		group.previewImage = url.url;
+		if (url) {
+			group.previewImage = url.url;
+		}
+
 		payload.push(group);
 	}
-	res.json({ Groups: payload });
+
+	return res.json({ Groups: payload });
 });
 
 router.get("/current", requireAuth, async (req, res) => {
@@ -52,7 +58,10 @@ router.get("/current", requireAuth, async (req, res) => {
 			},
 			attributes: ["url"],
 		});
-		group.previewImage = url.url;
+		if (url) {
+			group.previewImage = url.url;
+		}
+
 		payload.push(group);
 	}
 	return res.json({ Groups: payload });
@@ -111,4 +120,100 @@ router.get("/:groupId", async (req, res, next) => {
 	thisGroup.Venues = venuePayload;
 	return res.json(thisGroup);
 });
+const validateCreateGroup = [
+	// also validate firstName and lastName
+	check("name")
+		.exists({ checkFalsy: true })
+		.isLength({ max: 60 })
+		.withMessage("Name must be 60 characters or less"),
+	check("about")
+		.exists({ checkFalsy: true })
+		.isLength({ min: 50 })
+		.withMessage("About must be 50 characters or more"),
+	check("type")
+		.isIn(["In person", "Online"])
+		.withMessage("Type must be 'Online' or 'In person'"),
+	check("private").isBoolean().withMessage("Private must be a boolean"),
+	check("city").notEmpty().withMessage("City is required"),
+	check("state").notEmpty().withMessage("State is required"),
+	handleValidationErrors,
+];
+
+//Create a Group
+router.post(
+	"/",
+	[requireAuth, ...validateCreateGroup],
+	async (req, res, next) => {
+		// const currUserId = req.user.id;
+		// console.log(currUserId);
+		const { name, about, type, private, city, state } = req.body;
+
+		const newGroup = await Group.create({
+			name,
+			about,
+			type,
+			private,
+			city,
+			state,
+			organizerId: req.user.id,
+		});
+		res.statusCode = 201;
+		return res.json(newGroup);
+	}
+);
+
 module.exports = router;
+
+//expected format
+// Body:
+
+// {
+//   "name": "Evening Tennis on the Water",
+//   "about": "Enjoy rounds of tennis with a tight-nit group of people on the water facing the Brooklyn Bridge. Singles or doubles.",
+//   "type": "In person",
+//   "private": true,
+//   "city": "New York",
+//   "state": "NY",
+// }
+// Successful Response
+
+// Status Code: 201
+
+// Headers:
+
+// Content-Type: application/json
+// Body:
+
+// {
+//   "id": 1,
+//   "organizerId": 1,
+//   "name": "Evening Tennis on the Water",
+//   "about": "Enjoy rounds of tennis with a tight-nit group of people on the water facing the Brooklyn Bridge. Singles or doubles.",
+//   "type": "In person",
+//   "private": true,
+//   "city": "New York",
+//   "state": "NY",
+//   "createdAt": "2021-11-19 20:39:36",
+//   "updatedAt": "2021-11-19 20:39:36"
+// }
+// Error Response: Body validation error
+
+// Status Code: 400
+
+// Headers:
+
+// Content-Type: application/json
+// Body:
+
+// {
+//   "message": "Validation Error",
+//   "statusCode": 400,
+//   "errors": {
+//     "name": "Name must be 60 characters or less",
+//     "about": "About must be 50 characters or more",
+//     "type": "Type must be 'Online' or 'In person'",
+//     "private": "Private must be a boolean",
+//     "city": "City is required",
+//     "state": "State is required",
+//   }
+// }
