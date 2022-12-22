@@ -291,11 +291,25 @@ router.get("/:groupId/venues", requireAuth, async (req, res, next) => {
 		return next(err);
 	}
 	//Current User must be the organizer of the group or a member of the group with a status of "co-host"
-	const coHost = await Membership.findOne({ where: { groupId: groupId } });
+	// const coHost = await Membership.findOne({ where: { groupId: groupId } });
 
-	const isHost = coHost.status === "co-host";
+	// const isHost = coHost.status === "co-host";
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: groupId,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
 
-	if (currUser !== specificGroup.organizerId || isHost !== true) {
+	if (
+		currUser !== specificGroup.organizerId &&
+		!authorizedMemberIds.includes(currUser)
+	) {
 		const err = new Error("");
 		err.status = 403;
 		err.message = "Not authorized";
@@ -345,11 +359,22 @@ router.post(
 			return next(err);
 		}
 		//Current User must be the organizer of the group or a member of the group with a status of "co-host"
-		const coHost = await Membership.findOne({ where: { groupId: groupId } });
+		const coHosts = await Membership.findAll({
+			where: {
+				groupId: groupId,
+				status: "co-host",
+			},
+		});
+		const coHostsPOJO = [];
+		for (let member of coHosts) {
+			coHostsPOJO.push(member.toJSON());
+		}
+		const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
 
-		const isHost = coHost.status === "co-host";
-
-		if (currUserId !== specificGroup.organizerId || isHost !== true) {
+		if (
+			currUserId !== specificGroup.organizerId &&
+			!authorizedMemberIds.includes(currUserId)
+		) {
 			const err = new Error("");
 			err.status = 403;
 			err.message = "Not authorized";
