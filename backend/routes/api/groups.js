@@ -193,7 +193,7 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 
 	// Only the organizer of the group is authorized to add an image
 	// authorization.....
-	console.log(req.user.id);
+
 	if (req.user.id !== specificGroup.organizerId) {
 		const err = new Error("");
 		err.status = 403;
