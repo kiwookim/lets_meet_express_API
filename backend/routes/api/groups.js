@@ -176,7 +176,7 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 
 	// Only the organizer of the group is authorized to add an image
 	// authorization.....
-
+	console.log(req.user.id);
 	if (req.user.id !== specificGroup.organizerId) {
 		const err = new Error("");
 		err.status = 403;
@@ -218,20 +218,43 @@ router.put(
 			err.status = 403;
 			err.message = "Not authorized";
 			next(err);
+		} else {
+			const updatedGroup = await specificGroup.update({
+				name,
+				about,
+				type,
+				private,
+				city,
+				state,
+			});
+			return res.json(updatedGroup);
 		}
+	}
+);
 
-		const updatedGroup = await specificGroup.update({
-			name,
-			about,
-			type,
-			private,
-			city,
-			state,
-		});
-		return res.json(updatedGroup);
+router.delete("/:groupId", requireAuth, async (req, res, next) => {
+	const specificGroup = await Group.findByPk(req.params.groupId);
+	if (!specificGroup) {
+		const err = new Error("");
+		err.status = 404;
+		err.message = "Group could not be found";
+		next(err);
 	}
 
-	
-);
+	// Only the organizer of the group is authorized to delete group
+	if (req.user.id !== specificGroup.organizerId) {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not authorized";
+		return next(err);
+	} else {
+		await specificGroup.destroy();
+	}
+
+	return res.json({
+		message: "Successfully deleted",
+		statusCode: 200,
+	});
+});
 
 module.exports = router;

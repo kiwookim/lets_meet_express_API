@@ -20,17 +20,18 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Events",
-						foreignKey: "eventId",
-						onDelete: "CASCADE",
+						// foreignKey: "eventId",
 					},
+					onDelete: "cascade",
 				},
 				userId: {
 					type: Sequelize.INTEGER,
 					allowNull: false,
 					references: {
 						model: "Users",
-						onDelete: "CASCADE",
+						// foreignKey: "userId",
 					},
+					onDelete: "cascade",
 				},
 				status: {
 					type: Sequelize.ENUM("member", "waitlist"),
