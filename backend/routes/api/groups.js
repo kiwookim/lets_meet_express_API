@@ -123,11 +123,12 @@ router.get("/:groupId", async (req, res, next) => {
 const validateCreateGroup = [
 	// also validate firstName and lastName
 	check("name")
-		.exists({ checkFalsy: true })
-		.isLength({ max: 60 })
-		.withMessage("Name must be 60 characters or less"),
+		// .exists({ checkFalsy: true })
+		.exists()
+		.isLength({ max: 60, min: 1 })
+		.withMessage("Name must be 60 characters or less and required"),
 	check("about")
-		.exists({ checkFalsy: true })
+		.exists()
 		.isLength({ min: 50 })
 		.withMessage("About must be 50 characters or more"),
 	check("type")
@@ -195,5 +196,42 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 	responsePayload.preview = newImage.preview;
 	return res.json(responsePayload);
 });
+
+//Edit a group
+router.put(
+	"/:groupId",
+	requireAuth,
+	validateCreateGroup,
+	async (req, res, next) => {
+		const { name, about, type, private, city, state } = req.body;
+		const specificGroup = await Group.findByPk(req.params.groupId);
+		if (!specificGroup) {
+			const err = new Error("");
+			err.status = 404;
+			err.message = "Group could not be found";
+			next(err);
+		}
+
+		// Only the organizer of the group is authorized edit group
+		if (req.user.id !== specificGroup.organizerId) {
+			const err = new Error("");
+			err.status = 403;
+			err.message = "Not authorized";
+			next(err);
+		}
+
+		const updatedGroup = await specificGroup.update({
+			name,
+			about,
+			type,
+			private,
+			city,
+			state,
+		});
+		return res.json(updatedGroup);
+	}
+
+	
+);
 
 module.exports = router;
