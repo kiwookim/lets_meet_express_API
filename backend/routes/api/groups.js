@@ -277,4 +277,45 @@ router.delete("/:groupId", requireAuth, async (req, res, next) => {
 	});
 });
 
+//Get All Venues for a Group specified by its id
+router.get("/:groupId/venues", requireAuth, async (req, res, next) => {
+	const currUser = req.user.id;
+	const groupId = req.params.groupId;
+	const specificGroup = await Group.findByPk(groupId);
+
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		const err = new Error("");
+		err.status = 404;
+		err.message = "Group could not be found";
+		return next(err);
+	}
+	//Current User must be the organizer of the group or a member of the group with a status of "co-host"
+	const coHost = await Membership.findOne({ where: { userID: currUser } });
+
+	const isHost = coHost.status === "co-host";
+
+	if (currUser !== specificGroup.organizerId || !isHost) {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not authorized";
+		return next(err);
+	}
+
+	// Else if passes error handler...
+	const allVenues = await Venue.findAll({
+		where: {
+			groupId: specificGroup.id,
+		},
+		attributes: { exclude: ["createdAt", "updatedAt"] },
+	});
+	const venuePayload = [];
+	for (let venue of allVenues) {
+		venuePayload.push(venue.toJSON());
+	}
+	return res.json({
+		Venues: venuePayload,
+	});
+});
+
 module.exports = router;
