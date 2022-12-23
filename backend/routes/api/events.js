@@ -1,14 +1,21 @@
 const express = require("express");
-const { Event, Group, Venue, User } = require("../../db/models");
+const { Event, Group, Venue, User, Attendance } = require("../../db/models");
 const router = express.Router();
 
 
 router.get("/", async (req, res, next) => {
+	const payload = [];
 	const events = await Event.findAll();
-	events.forEach(async (event) => {
-		const group = await event.getGroup();
-	});
-
+	for (let event of events) {
+		event = event.toJSON();
+		event.numAttending = await Attendance.count({
+			where: {
+				eventId: event.id,
+				status: "attending",
+			},
+		});
+		console.log(event.numAttending);
+	}
 	return res.json(events);
 });
 
