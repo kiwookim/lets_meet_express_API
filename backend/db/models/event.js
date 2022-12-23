@@ -28,6 +28,7 @@ module.exports = (sequelize, DataTypes) => {
 				allowNull: false,
 				primaryKey: true,
 				autoIncrement: true,
+				type: DataTypes.INTEGER,
 			},
 			venueId: { type: DataTypes.INTEGER },
 			groupId: { type: DataTypes.INTEGER, allowNull: false },
