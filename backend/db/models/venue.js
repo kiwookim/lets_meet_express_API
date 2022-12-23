@@ -19,9 +19,9 @@ module.exports = (sequelize, DataTypes) => {
 	Venue.init(
 		{
 			id: {
-				type: DataTypes.INTEGER,
-				primaryKey: true,
 				allowNull: false,
+				primaryKey: true,
+				autoIncrement: true,
 			},
 			groupId: {
 				type: DataTypes.INTEGER,
