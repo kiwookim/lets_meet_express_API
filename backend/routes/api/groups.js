@@ -8,6 +8,9 @@ const {
 	Membership,
 	User,
 	Venue,
+	Event,
+	Attendance,
+	EventImage,
 } = require("../../db/models");
 const { restoreUser, requireAuth } = require("../../utils/auth");
 
@@ -397,5 +400,76 @@ router.post(
 		return res.json(...latestInsert);
 	}
 );
+
+//Get all Events of a Group specified by its id
+router.get("/:groupId/events", async (req, res, next) => {
+	const groupId = req.params.groupId;
+	const events = await Event.findAll({
+		where: {
+			groupId: groupId,
+		},
+		attributes: [
+			"id",
+			"groupId",
+			"venueId",
+			"name",
+			"type",
+			"startDate",
+			"endDate",
+		],
+	});
+	if (!events.length) {
+		const err = new Error();
+		(err.message = "Group could not be found"), (err.status = 404);
+		return next(err);
+	}
+	const payload = [];
+	for (let event of events) {
+		event = event.toJSON();
+		event.numAttending = await Attendance.count({
+			where: {
+				eventId: event.id,
+				status: "attending",
+			},
+		});
+		let url = await EventImage.findAll({
+			where: {
+				eventId: event.id,
+				preview: true,
+			},
+			attributes: ["url"],
+		});
+		const lastPreviewImg = url[url.length - 1];
+		if (url.length) {
+			event.previewImage = lastPreviewImg.url;
+		} else {
+			event.previewImage = "No Preview Image Available";
+		}
+		const associatedGroup = await Group.findOne({
+			where: {
+				id: event.groupId,
+			},
+			attributes: ["id", "name", "city", "state"],
+		});
+		event.Group = associatedGroup;
+		//Venue
+		const associatedVenue = await Venue.findOne({
+			where: {
+				id: event.venueId,
+			},
+			attributes: ["id", "city", "state"],
+		});
+		if (associatedVenue) {
+			event.Venue = associatedVenue;
+		} else {
+			event.Venue = null;
+		}
+
+		payload.push(event);
+	}
+	return res.json({
+		Events: payload,
+	});
+});
 
 module.exports = router;
