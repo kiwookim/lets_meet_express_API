@@ -17,11 +17,16 @@ module.exports = (sequelize, DataTypes) => {
 			});
 
 			//also act as a join table to Group and Venue
-
 		}
 	}
 	Event.init(
 		{
+			id: {
+				type: DataTypes.INTEGER,
+				primaryKey: true,
+				autoIncrement: true,
+				allowNull: false,
+			},
 			venueId: { type: DataTypes.INTEGER },
 			groupId: { type: DataTypes.INTEGER, allowNull: false },
 			name: { type: DataTypes.STRING, allowNull: false },
