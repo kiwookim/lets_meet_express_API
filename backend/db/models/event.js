@@ -10,27 +10,60 @@ module.exports = (sequelize, DataTypes) => {
 		static associate(models) {
 			// define association here
 			// event has many images
-			Event.hasMany(models.EventImage, { foreignKey: "eventId" });
+			Event.hasMany(models.EventImage, {
+				foreignKey: "eventId",
+				onDelete: "cascade",
+			});
 			Event.belongsToMany(models.User, {
 				through: models.Attendance,
 				foreignKey: "eventId",
 			});
 
 			//also act as a join table to Group and Venue
-
 		}
 	}
 	Event.init(
 		{
-			venueId: { type: DataTypes.INTEGER },
-			groupId: { type: DataTypes.INTEGER, allowNull: false },
-			name: { type: DataTypes.STRING, allowNull: false },
-			description: { type: DataTypes.TEXT, allowNull: false },
-			type: { type: DataTypes.ENUM("In Person", "Online"), allowNull: false },
-			capacity: { type: DataTypes.INTEGER, allowNull: false },
-			price: { type: DataTypes.INTEGER, allowNull: false },
-			startDate: { type: DataTypes.DATE, allowNull: false },
-			endDate: { type: DataTypes.DATE, allowNull: false },
+			id: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				primaryKey: true,
+			},
+			venueId: {
+				type: DataTypes.INTEGER,
+			},
+			groupId: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+			},
+			name: {
+				type: DataTypes.STRING,
+				allowNull: false,
+			},
+			description: {
+				type: DataTypes.TEXT,
+				allowNull: false,
+			},
+			type: {
+				type: DataTypes.ENUM("In Person", "Online"),
+				allowNull: false,
+			},
+			capacity: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+			},
+			price: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+			},
+			startDate: {
+				type: DataTypes.DATE,
+				allowNull: false,
+			},
+			endDate: {
+				type: DataTypes.DATE,
+				allowNull: false,
+			},
 		},
 		{
 			sequelize,
