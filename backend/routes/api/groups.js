@@ -472,4 +472,6 @@ router.get("/:groupId/events", async (req, res, next) => {
 	});
 });
 
+
+
 module.exports = router;
