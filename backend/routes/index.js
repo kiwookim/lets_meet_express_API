@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const apiRouter = require("./api");
 
-router.use("/api", apiRouter);  // at the top or bottom?
+router.use("/api", apiRouter); // at the top or bottom?
 
 router.get("/api/csrf/restore", (req, res) => {
 	const csrfToken = req.csrfToken();

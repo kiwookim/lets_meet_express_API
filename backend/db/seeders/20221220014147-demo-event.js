@@ -22,7 +22,6 @@ module.exports = {
 			options,
 			[
 				{
-					id: 1,
 					groupId: 1,
 					venueId: 1,
 					name: "Tennis Group First Meet and Greet",
@@ -35,7 +34,6 @@ module.exports = {
 					endDate: "2021-11-19 22:00:00",
 				},
 				{
-					id: 2,
 					groupId: 2,
 					venueId: 2,
 					name: "Jazz Trio Jam Session",
@@ -47,7 +45,6 @@ module.exports = {
 					endDate: "2022-12-21 22:00:00",
 				},
 				{
-					id: 3,
 					groupId: 3,
 					venueId: 3,
 					name: "New Year gravel bike ride",
