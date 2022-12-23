@@ -13,6 +13,11 @@ module.exports = (sequelize, DataTypes) => {
 	}
 	Attendance.init(
 		{
+			id: {
+				type: DataTypes.INTEGER,
+				allowNull: false,
+				primaryKey: true,
+			},
 			eventId: {
 				type: DataTypes.INTEGER,
 				allowNull: false,
