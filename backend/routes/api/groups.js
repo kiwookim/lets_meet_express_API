@@ -176,7 +176,7 @@ router.post(
 			private,
 			city,
 			state,
-			organizerId: req.user.id,
+			organizerId: Number(req.user.id),
 		});
 		res.statusCode = 201;
 		return res.json(newGroup);
@@ -207,7 +207,7 @@ router.post("/:groupId/images", requireAuth, async (req, res, next) => {
 	let newImage = await GroupImage.create({
 		url,
 		preview,
-		groupId: req.params.groupId,
+		groupId: Number(req.params.groupId),
 	});
 	if (newImage.preview === true) {
 		Group.previewImage = newImage.preview;
@@ -470,6 +470,132 @@ router.get("/:groupId/events", async (req, res, next) => {
 	return res.json({
 		Events: payload,
 	});
+});
+
+//Create an Event for a Group specified by its id
+router.post("/:groupId/events", requireAuth, async (req, res, next) => {
+	const groupId = req.params.groupId; //curr user must be organizer of the Group OR member of the group with status 'co-host'
+	const currUserId = req.user.id;
+	const specificGroup = await Group.findByPk(Number(groupId));
+	if (!specificGroup) {
+		const err = new Error("");
+		err.status = 404;
+		err.message = "Group could not be found";
+		return next(err);
+	}
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: groupId,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+
+	if (
+		currUserId !== specificGroup.organizerId &&
+		!authorizedMemberIds.includes(currUserId)
+	) {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not authorized";
+		return next(err);
+	}
+
+	const {
+		venueId,
+		name,
+		type,
+		capacity,
+		price,
+		description,
+		startDate,
+		endDate,
+	} = req.body;
+
+	//Event Body Validation
+	const validationErrors = {};
+	const foundVenue = await Venue.findByPk(venueId);
+	const eventType = ["In person", "Online"];
+
+	if (venueId) {
+		if (!foundVenue) {
+			validationErrors.venueId = "Venue does not exist";
+		}
+	}
+	if (name.length < 5)
+		validationErrors.name = "Name must be at least 5 characters";
+	if (!eventType.includes(type))
+		validationErrors.type = "Type must be Online or In person";
+	if (typeof capacity !== "number")
+		validationErrors.capacity = "Capacity must be an integer";
+	if (typeof price !== "number" || price < 0)
+		validationErrors.price = "Price is invalid";
+	if (description.length === 0)
+		validationErrors.description = "Description is required";
+	// FINISH startDate and endDate
+	const eventStartDate = startDate.split(" ")[0].split("-");
+	const eventStartTime = startDate.split(" ")[1].split(":");
+	const eventEndDate = endDate.split(" ")[0].split("-");
+	const eventEndTime = endDate.split(" ")[1].split(":");
+	const [sYear, sMonth, sDay] = eventStartDate;
+	const [sHour, sMin, sSec] = eventStartTime;
+	const [eYear, eMonth, eDay] = eventEndDate;
+	const [eHour, eMin, eSec] = eventEndTime;
+	const getStartDate = new Date(
+		sYear,
+		sMonth - 1,
+		sDay,
+		sHour,
+		sMin,
+		sSec
+	).getTime();
+	const getEndDate = new Date(
+		eYear,
+		eMonth - 1,
+		eDay,
+		eHour,
+		eMin,
+		eSec
+	).getTime();
+	const getCurrDate = new Date().getTime();
+	if (getStartDate < getCurrDate)
+		validationErrors.startDate = "Start date must be in the future";
+	if (getStartDate > getEndDate)
+		validationErrors.endDate = "End date is less than start date";
+	if (Object.keys(validationErrors).length) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 404,
+			errors: {
+				...validationErrors,
+			},
+		});
+	}
+
+	const newEvent = await Event.create({
+		venueId,
+		groupId: Number(groupId),
+		name,
+		capacity,
+		type,
+		price,
+		description,
+		startDate,
+		endDate,
+	});
+	const newEventResponse = {};
+	for (let key in newEvent.toJSON()) {
+		if (key === "createdAt" || key === "updatedAt") {
+			break;
+		}
+		newEventResponse[key] = newEvent[key];
+	}
+	return res.json(newEventResponse);
 });
 
 module.exports = router;
