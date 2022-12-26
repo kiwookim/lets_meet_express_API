@@ -109,4 +109,6 @@ router.get("/:eventId", async (req, res, next) => {
 	return res.json(specificEvent);
 });
 
+//Add an Image to a Event based on the Event's id
+
 module.exports = router;
