@@ -471,30 +471,6 @@ router.get("/:groupId/events", async (req, res, next) => {
 		Events: payload,
 	});
 });
-// const validateEvent = [
-// 	check("venueId").notEmpty().withMessage("Venue does not exist"),
-// 	check("name")
-// 		.exists({ checkFalsy: true })
-// 		.withMessage("Name must be at least 5 characters"),
-// 	check("type")
-// 		.exists({ checkFalsy: true })
-// 		.isIn(["Online", "In person"])
-// 		.withMessage("Type must be Online or In person"),
-// 	check("capacity")
-// 		.exists({ checkFalsy: true })
-// 		.isInt()
-// 		.withMessage("Capacity must be an integer"),
-// 	check("price")
-// 		.exists({ checkFalsy: true })
-// 		.isInt()
-// 		.isDecimal()
-// 		.withMessage("Price is invalid"),
-// 	check("description")
-// 		.exists({ checkFalsy: true })
-// 		.withMessage("Description is required"),
-
-// 	handleValidationErrors,
-// ];
 
 //Create an Event for a Group specified by its id
 router.post("/:groupId/events", requireAuth, async (req, res, next) => {
@@ -545,7 +521,11 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 	const foundVenue = await Venue.findByPk(venueId);
 	const eventType = ["In person", "Online"];
 
-	if (!foundVenue) validationErrors.venueId = "Venue does not exist";
+	if (venueId) {
+		if (!foundVenue) {
+			validationErrors.venueId = "Venue does not exist";
+		}
+	}
 	if (name.length < 5)
 		validationErrors.name = "Name must be at least 5 characters";
 	if (!eventType.includes(type))
