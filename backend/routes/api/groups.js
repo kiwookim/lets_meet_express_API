@@ -524,7 +524,11 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 
 	if (venueId) {
 		if (!foundVenue) {
-			validationErrors.venueId = "Venue does not exist";
+			res.status(404);
+			return res.json({
+				message: "Venue couldn't be found",
+				statusCode: 404,
+			});
 		}
 	}
 	if (name.length < 5)
@@ -577,7 +581,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 			},
 		});
 	}
-
+	// end of event validation
 	const newEvent = await Event.create({
 		venueId,
 		groupId: Number(groupId),

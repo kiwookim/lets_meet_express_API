@@ -245,4 +245,145 @@ router.delete("/:eventId", requireAuth, async (req, res, next) => {
 	}
 });
 
+//Edit an Event specified by its id
+router.put("/:eventId", requireAuth, async (req, res, next) => {
+	const currUserId = req.user.id;
+	const eventId = Number(req.params.eventId);
+	const specificEvent = await Event.findOne({
+		where: {
+			id: eventId,
+		},
+		attributes: { exclude: ["updatedAt", "createdAt"] },
+	});
+	if (!specificEvent) {
+		res.status(404);
+		return res.json({
+			message: "Event could not be found",
+			statusCode: 404,
+		});
+	}
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
+	//REQUIRE authorization
+	//must be organizer of the group OR cohost
+	//currUserId === specificGroup.organizerId ---> organizer
+	console.log("groupOrganizer:        ", specificGroup.organizerId);
+	console.log("currUserId:            ", currUserId);
+	//CurrUser must be a co-host
+	//if currUser is in list of co-host's list -> authorized
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	console.log("authorizedMembers:    ", authorizedMemberIds);
+
+	//Event Body Validation
+	const {
+		venueId,
+		name,
+		type,
+		capacity,
+		price,
+		description,
+		startDate,
+		endDate,
+	} = req.body;
+	const validationErrors = {};
+	const foundVenue = await Venue.findByPk(venueId);
+	const eventType = ["In person", "Online"];
+
+	if (venueId) {
+		if (!foundVenue) {
+			res.status(404);
+			return res.json({
+				message: "Venue couldn't be found",
+				statusCode: 404,
+			});
+		}
+	}
+	if (name.length < 5)
+		validationErrors.name = "Name must be at least 5 characters";
+	if (!eventType.includes(type))
+		validationErrors.type = "Type must be Online or In person";
+	if (typeof capacity !== "number")
+		validationErrors.capacity = "Capacity must be an integer";
+	if (typeof price !== "number" || price < 0)
+		validationErrors.price = "Price is invalid";
+	if (description.length === 0)
+		validationErrors.description = "Description is required";
+	// FINISH startDate and endDate
+	const eventStartDate = startDate.split(" ")[0].split("-");
+	const eventStartTime = startDate.split(" ")[1].split(":");
+	const eventEndDate = endDate.split(" ")[0].split("-");
+	const eventEndTime = endDate.split(" ")[1].split(":");
+	const [sYear, sMonth, sDay] = eventStartDate;
+	const [sHour, sMin, sSec] = eventStartTime;
+	const [eYear, eMonth, eDay] = eventEndDate;
+	const [eHour, eMin, eSec] = eventEndTime;
+	const getStartDate = new Date(
+		sYear,
+		sMonth - 1,
+		sDay,
+		sHour,
+		sMin,
+		sSec
+	).getTime();
+	const getEndDate = new Date(
+		eYear,
+		eMonth - 1,
+		eDay,
+		eHour,
+		eMin,
+		eSec
+	).getTime();
+	const getCurrDate = new Date().getTime();
+	if (getStartDate < getCurrDate)
+		validationErrors.startDate = "Start date must be in the future";
+	if (getStartDate > getEndDate)
+		validationErrors.endDate = "End date is less than start date";
+	if (Object.keys(validationErrors).length) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 404,
+			errors: {
+				...validationErrors,
+			},
+		});
+	}
+	// end of event validation
+
+	if (
+		currUserId === specificGroup.organizerId ||
+		authorizedMemberIds.includes(currUserId)
+	) {
+		const updatedEvent = await specificEvent.update({
+			venueId,
+			name,
+			type,
+			capacity,
+			price,
+			description,
+			startDate,
+			endDate,
+		});
+		return res.json(updatedEvent);
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "NOT, authorized";
+		return next(err);
+	}
+});
+
 module.exports = router;
