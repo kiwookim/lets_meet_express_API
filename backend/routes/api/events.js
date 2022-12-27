@@ -192,4 +192,57 @@ router.post("/:eventId/images", requireAuth, async (req, res, next) => {
 		return next(err);
 	}
 });
+//Delete an Event specified by its id
+router.delete("/:eventId", requireAuth, async (req, res, next) => {
+	const currUserId = req.user.id;
+	const eventId = Number(req.params.eventId);
+	const specificEvent = await Event.findByPk(eventId);
+	if (!specificEvent) {
+		res.status(404);
+		return res.json({
+			message: "Event could not be found",
+			statusCode: 404,
+		});
+	}
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
+	//REQUIRE authorization
+	//must be organizer of the group OR cohost
+	//currUserId === specificGroup.organizerId ---> organizer
+	console.log("groupOrganizer:        ", specificGroup.organizerId);
+	console.log("currUserId:            ", currUserId);
+	//CurrUser must be a co-host
+	//if currUser is in list of co-host's list -> authorized
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	console.log("authorizedMembers:    ", authorizedMemberIds);
+
+	if (
+		currUserId === specificGroup.organizerId ||
+		authorizedMemberIds.includes(currUserId)
+	) {
+		await specificEvent.destroy();
+		return res.json({
+			message: "Successfully deleted",
+		});
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "NOT, authorized";
+		return next(err);
+	}
+});
+
 module.exports = router;

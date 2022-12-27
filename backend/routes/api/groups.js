@@ -361,7 +361,8 @@ router.post(
 			err.message = "Group could not be found";
 			return next(err);
 		}
-		//Current User must be the organizer of the group or a member of the group with a status of "co-host"
+		//Current User must be the organizer of the group or a member
+		//of the group with a status of "co-host"
 		const coHosts = await Membership.findAll({
 			where: {
 				groupId: groupId,
