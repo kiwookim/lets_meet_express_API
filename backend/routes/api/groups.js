@@ -602,5 +602,69 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 	}
 	return res.json(newEventResponse);
 });
+//Get all Members of a Group specified by its id
+router.get("/:groupId/members", async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const currUserId = req.user !== null ? req.user.id : null;
+	const specificGroup = await Group.findByPk(groupId);
+
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: groupId,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	const resultPayload = {};
+	let allMembers = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+		},
+	});
+	const allMembersInfo = [];
+	for (let member of allMembers) {
+		member = member.toJSON();
+		let userInfo = await User.findOne({
+			where: {
+				id: member.userId,
+			},
+			attributes: ["id", "firstName", "lastName"],
+		});
+		userInfo = userInfo.toJSON();
+
+		if (
+			currUserId === specificGroup.organizerId ||
+			authorizedMemberIds.includes(currUserId)
+		) {
+			//Successful Response: If you ARE the organizer or a co-host of the group.
+			//Shows all members and their statuses.
+			userInfo.Membership = { status: member.status };
+
+			console.log("AUTHORIZED: organizer or co-host", "--> show all statuses");
+		} else {
+			//Successful Response: If you ARE NOT the organizer of the group.
+			//Shows only members that don't have a status of "pending"
+			if (member.status !== "pending")
+				userInfo.Membership = { status: member.status };
+		}
+		allMembersInfo.push(userInfo);
+	}
+	return res.json({
+		Members: allMembersInfo,
+	});
+});
 
 module.exports = router;
