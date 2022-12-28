@@ -21,21 +21,21 @@ module.exports = {
 		await queryInterface.bulkInsert(
 			options,
 			[
-				{
-					userId: 1,
-					groupId: 1,
-					status: "co-host",
-				},
-				{
-					userId: 2,
-					groupId: 2,
-					status: "member",
-				},
-				{
-					userId: 3,
-					groupId: 3,
-					status: "pending",
-				},
+				// {
+				// 	userId: 1,
+				// 	groupId: 1,
+				// 	status: "co-host",
+				// },
+				// {
+				// 	userId: 2,
+				// 	groupId: 2,
+				// 	status: "member",
+				// },
+				// {
+				// 	userId: 3,
+				// 	groupId: 3,
+				// 	status: "pending",
+				// },
 				{
 					userId: 4,
 					groupId: 1,
@@ -68,7 +68,7 @@ module.exports = {
 		await queryInterface.bulkDelete(
 			options,
 			{
-				userId: { [Op.in]: [1, 2, 3, 4, 5, 6] },
+				userId: { [Op.in]: [4, 5, 6] },
 			},
 			{}
 		);

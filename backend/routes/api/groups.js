@@ -695,7 +695,7 @@ router.post("/:groupId/membership", requireAuth, async (req, res, next) => {
 			status: "pending",
 		});
 		resultPayload.groupId = newMemberToGroup.groupId;
-		resultPayload.userId = newMemberToGroup.userId;
+		resultPayload.memberId = newMemberToGroup.userId;
 		resultPayload.status = newMemberToGroup.status;
 		return res.json(resultPayload);
 	}
@@ -719,6 +719,109 @@ router.post("/:groupId/membership", requireAuth, async (req, res, next) => {
 			message: "User is already a member of the group",
 			statusCode: 400,
 		});
+	}
+});
+
+//Change the status of a membership for a group specified by id
+router.put("/:groupId/membership", requireAuth, async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const currUserId = req.user.id;
+	const specificGroup = await Group.findByPk(groupId);
+	const { memberId, status } = req.body;
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+	// finding co-hosts
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: groupId,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	console.log(authorizedMemberIds);
+
+	//Error response with status 404 is given when a membership between the user
+	//and group does not exist
+	let givenMemberId = await Membership.findOne({
+		where: {
+			userId: memberId,
+			groupId: specificGroup.id,
+		},
+		attributes: { exclude: ["createdAt", "updatedAt"] },
+	});
+	if (!givenMemberId) {
+		res.status(404);
+		return res.json({
+			message: "Membership between the user and the group does not exits",
+			statusCode: 404,
+		});
+	}
+	console.log("USER IS FOUND", givenMemberId.toJSON());
+	//validation Error response: If changing the membership status to "pending".
+	if (status === "pending") {
+		res.status(400);
+		return res.json({
+			message: "Validations Error",
+			statusCode: 400,
+			errors: {
+				status: "Cannot change a membership status to pending",
+			},
+		});
+	}
+
+	//AUTHORIZATION:
+	//-----"member"  ---> "co-host": currUser must be the SOLE ORGANIZER
+	console.log(currUserId, "currUserId");
+	console.log(specificGroup.organizerId, "organizerId");
+	if (
+		currUserId === specificGroup.organizerId &&
+		!authorizedMemberIds.includes(currUserId)
+	) {
+		const resultPayload = {};
+		let changeMembership = await givenMemberId.update({
+			status,
+		});
+		changeMembership = changeMembership.toJSON();
+		resultPayload.id = changeMembership.id;
+		resultPayload.groupId = changeMembership.groupId;
+		resultPayload.memberId = changeMembership.userId;
+		resultPayload.status = changeMembership.status;
+		return res.json(resultPayload);
+	} else if (authorizedMemberIds.includes(currUserId)) {
+		//-----"pending" ---> "member":  currUser must be ORGANIZER or COHOST
+		console.log("I am NOT organizer of this group BUT co-host");
+		const resultPayload = {};
+		if (status === "member") {
+			let changeMembership = await givenMemberId.update({
+				status,
+			});
+			changeMembership = changeMembership.toJSON();
+			resultPayload.id = changeMembership.id;
+			resultPayload.groupId = changeMembership.groupId;
+			resultPayload.memberId = changeMembership.userId;
+			resultPayload.status = changeMembership.status;
+			return res.json(resultPayload);
+		} else if (status === "co-host") {
+			const err = new Error("");
+			err.status = 403;
+			err.message = "Not Authorized";
+			return next(err);
+		}
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not Authorized";
+		return next(err);
 	}
 });
 
