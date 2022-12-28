@@ -728,6 +728,18 @@ router.put("/:groupId/membership", requireAuth, async (req, res, next) => {
 	const currUserId = req.user.id;
 	const specificGroup = await Group.findByPk(groupId);
 	const { memberId, status } = req.body;
+	const givenUser = await User.findByPk(memberId);
+	//Error response: Couldn't find a User with the specified memberId
+	if (!givenUser) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 400,
+			errors: {
+				memberId: "User couldn't be found",
+			},
+		});
+	}
 	//Error response: Couldn't find a Group with the specified id
 	if (!specificGroup) {
 		res.status(404);
@@ -817,6 +829,69 @@ router.put("/:groupId/membership", requireAuth, async (req, res, next) => {
 			err.message = "Not Authorized";
 			return next(err);
 		}
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not Authorized";
+		return next(err);
+	}
+});
+
+//Delete membership to a group specified by id
+router.delete("/:groupId/membership", requireAuth, async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const currUserId = req.user.id;
+	const specificGroup = await Group.findByPk(groupId);
+	const { memberId } = req.body;
+	const givenUser = await User.findByPk(memberId);
+	//Error response: Couldn't find a User with the specified memberId
+	if (!givenUser) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 400,
+			errors: {
+				memberId: "User couldn't be found",
+			},
+		});
+	}
+	// Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+	//Error response: Membership does not exist for this User
+	//Error response with status 404 is given when a membership between the user
+	//and group does not exist
+	let givenMemberId = await Membership.findOne({
+		where: {
+			userId: memberId,
+			groupId: specificGroup.id,
+		},
+		attributes: { exclude: ["createdAt", "updatedAt"] },
+	});
+	if (!givenMemberId) {
+		res.status(404);
+		return res.json({
+			message: "Membership between the user and the group does not exits",
+			statusCode: 404,
+		});
+	}
+	console.log("USER IS FOUND", givenMemberId.toJSON());
+
+	//AUTHORIZATION
+	//currUserId === organizerId or currUserId === memberId
+	console.log("memberId:          ", memberId);
+	console.log("currUserId         ", currUserId);
+	if (currUserId === specificGroup.organizerId || currUserId === memberId) {
+		console.log("AUTHORIZED: Let's delete this Membership");
+		await givenMemberId.destroy();
+		return res.json({
+			message: "Successfully deleted membership from group",
+		});
 	} else {
 		const err = new Error("");
 		err.status = 403;
