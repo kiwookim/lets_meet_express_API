@@ -667,4 +667,59 @@ router.get("/:groupId/members", async (req, res, next) => {
 	});
 });
 
+//Request a Membership for a Group based on the Group's id
+router.post("/:groupId/membership", requireAuth, async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const specificGroup = await Group.findByPk(groupId);
+	const currUserID = req.user.id;
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+	//can only have one membership.......
+	let currUserMembership = await Membership.findOne({
+		where: {
+			userId: currUserID,
+			groupId: specificGroup.id,
+		},
+	});
+	if (!currUserMembership) {
+		const resultPayload = {};
+		const newMemberToGroup = await Membership.create({
+			userId: currUserID,
+			groupId: groupId,
+			status: "pending",
+		});
+		resultPayload.groupId = newMemberToGroup.groupId;
+		resultPayload.userId = newMemberToGroup.userId;
+		resultPayload.status = newMemberToGroup.status;
+		return res.json(resultPayload);
+	}
+
+	//Error response: Current User already has a pending membership for the group
+	if (currUserMembership.status === "pending") {
+		console.log("PENDING");
+		res.status(400);
+		return res.json({
+			message: "Membership has already been requested",
+			statusCode: 400,
+		});
+	}
+	//Error response: Current User is already an accepted member of the group
+	if (
+		currUserMembership.status === "member" ||
+		currUserMembership.status === "co-host"
+	) {
+		res.status(400);
+		return res.json({
+			message: "User is already a member of the group",
+			statusCode: 400,
+		});
+	}
+});
+
 module.exports = router;
