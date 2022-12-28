@@ -23,17 +23,17 @@ module.exports = {
 			[
 				{
 					userId: 1,
-					groupId: 1,
-					status: "co-host",
+					groupId: 2,
+					status: "pending",
 				},
 				{
 					userId: 2,
-					groupId: 2,
-					status: "member",
+					groupId: 3,
+					status: "pending",
 				},
 				{
 					userId: 3,
-					groupId: 3,
+					groupId: 1,
 					status: "pending",
 				},
 				{
@@ -43,13 +43,13 @@ module.exports = {
 				},
 				{
 					userId: 5,
-					groupId: 1,
+					groupId: 2,
 					status: "co-host",
 				},
 				{
 					userId: 6,
-					groupId: 2,
-					status: "member",
+					groupId: 3,
+					status: "co-host",
 				},
 			],
 			{}
@@ -68,7 +68,7 @@ module.exports = {
 		await queryInterface.bulkDelete(
 			options,
 			{
-				userId: { [Op.in]: [1, 2, 3, 4, 5, 6] },
+				userId: { [Op.in]: [4, 5, 6] },
 			},
 			{}
 		);

@@ -602,5 +602,302 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 	}
 	return res.json(newEventResponse);
 });
+//Get all Members of a Group specified by its id
+router.get("/:groupId/members", async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const currUserId = req.user !== null ? req.user.id : null;
+	const specificGroup = await Group.findByPk(groupId);
+
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: groupId,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	const resultPayload = {};
+	let allMembers = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+		},
+	});
+	const allMembersInfo = [];
+	for (let member of allMembers) {
+		member = member.toJSON();
+		let userInfo = await User.findOne({
+			where: {
+				id: member.userId,
+			},
+			attributes: ["id", "firstName", "lastName"],
+		});
+		userInfo = userInfo.toJSON();
+
+		if (
+			currUserId === specificGroup.organizerId ||
+			authorizedMemberIds.includes(currUserId)
+		) {
+			//Successful Response: If you ARE the organizer or a co-host of the group.
+			//Shows all members and their statuses.
+			userInfo.Membership = { status: member.status };
+
+			console.log("AUTHORIZED: organizer or co-host", "--> show all statuses");
+		} else {
+			//Successful Response: If you ARE NOT the organizer of the group.
+			//Shows only members that don't have a status of "pending"
+			if (member.status !== "pending")
+				userInfo.Membership = { status: member.status };
+		}
+		allMembersInfo.push(userInfo);
+	}
+	return res.json({
+		Members: allMembersInfo,
+	});
+});
+
+//Request a Membership for a Group based on the Group's id
+router.post("/:groupId/membership", requireAuth, async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const specificGroup = await Group.findByPk(groupId);
+	const currUserID = req.user.id;
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+	//can only have one membership.......
+	let currUserMembership = await Membership.findOne({
+		where: {
+			userId: currUserID,
+			groupId: specificGroup.id,
+		},
+	});
+	if (!currUserMembership) {
+		const resultPayload = {};
+		const newMemberToGroup = await Membership.create({
+			userId: currUserID,
+			groupId: groupId,
+			status: "pending",
+		});
+		resultPayload.groupId = newMemberToGroup.groupId;
+		resultPayload.memberId = newMemberToGroup.userId;
+		resultPayload.status = newMemberToGroup.status;
+		return res.json(resultPayload);
+	}
+
+	//Error response: Current User already has a pending membership for the group
+	if (currUserMembership.status === "pending") {
+		console.log("PENDING");
+		res.status(400);
+		return res.json({
+			message: "Membership has already been requested",
+			statusCode: 400,
+		});
+	}
+	//Error response: Current User is already an accepted member of the group
+	if (
+		currUserMembership.status === "member" ||
+		currUserMembership.status === "co-host"
+	) {
+		res.status(400);
+		return res.json({
+			message: "User is already a member of the group",
+			statusCode: 400,
+		});
+	}
+});
+
+//Change the status of a membership for a group specified by id
+router.put("/:groupId/membership", requireAuth, async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const currUserId = req.user.id;
+	const specificGroup = await Group.findByPk(groupId);
+	const { memberId, status } = req.body;
+	const givenUser = await User.findByPk(memberId);
+	//Error response: Couldn't find a User with the specified memberId
+	if (!givenUser) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 400,
+			errors: {
+				memberId: "User couldn't be found",
+			},
+		});
+	}
+	//Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+	// finding co-hosts
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: groupId,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	console.log(authorizedMemberIds);
+
+	//Error response with status 404 is given when a membership between the user
+	//and group does not exist
+	let givenMemberId = await Membership.findOne({
+		where: {
+			userId: memberId,
+			groupId: specificGroup.id,
+		},
+		attributes: { exclude: ["createdAt", "updatedAt"] },
+	});
+	if (!givenMemberId) {
+		res.status(404);
+		return res.json({
+			message: "Membership between the user and the group does not exits",
+			statusCode: 404,
+		});
+	}
+	console.log("USER IS FOUND", givenMemberId.toJSON());
+	//validation Error response: If changing the membership status to "pending".
+	if (status === "pending") {
+		res.status(400);
+		return res.json({
+			message: "Validations Error",
+			statusCode: 400,
+			errors: {
+				status: "Cannot change a membership status to pending",
+			},
+		});
+	}
+
+	//AUTHORIZATION:
+	//-----"member"  ---> "co-host": currUser must be the SOLE ORGANIZER
+	console.log(currUserId, "currUserId");
+	console.log(specificGroup.organizerId, "organizerId");
+	if (
+		currUserId === specificGroup.organizerId &&
+		!authorizedMemberIds.includes(currUserId)
+	) {
+		const resultPayload = {};
+		let changeMembership = await givenMemberId.update({
+			status,
+		});
+		changeMembership = changeMembership.toJSON();
+		resultPayload.id = changeMembership.id;
+		resultPayload.groupId = changeMembership.groupId;
+		resultPayload.memberId = changeMembership.userId;
+		resultPayload.status = changeMembership.status;
+		return res.json(resultPayload);
+	} else if (authorizedMemberIds.includes(currUserId)) {
+		//-----"pending" ---> "member":  currUser must be ORGANIZER or COHOST
+		console.log("I am NOT organizer of this group BUT co-host");
+		const resultPayload = {};
+		if (status === "member") {
+			let changeMembership = await givenMemberId.update({
+				status,
+			});
+			changeMembership = changeMembership.toJSON();
+			resultPayload.id = changeMembership.id;
+			resultPayload.groupId = changeMembership.groupId;
+			resultPayload.memberId = changeMembership.userId;
+			resultPayload.status = changeMembership.status;
+			return res.json(resultPayload);
+		} else if (status === "co-host") {
+			const err = new Error("");
+			err.status = 403;
+			err.message = "Not Authorized";
+			return next(err);
+		}
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not Authorized";
+		return next(err);
+	}
+});
+
+//Delete membership to a group specified by id
+router.delete("/:groupId/membership", requireAuth, async (req, res, next) => {
+	const groupId = Number(req.params.groupId);
+	const currUserId = req.user.id;
+	const specificGroup = await Group.findByPk(groupId);
+	const { memberId } = req.body;
+	const givenUser = await User.findByPk(memberId);
+	//Error response: Couldn't find a User with the specified memberId
+	if (!givenUser) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 400,
+			errors: {
+				memberId: "User couldn't be found",
+			},
+		});
+	}
+	// Error response: Couldn't find a Group with the specified id
+	if (!specificGroup) {
+		res.status(404);
+		return res.json({
+			message: "Group couldn't be found",
+			statusCode: 404,
+		});
+	}
+	//Error response: Membership does not exist for this User
+	//Error response with status 404 is given when a membership between the user
+	//and group does not exist
+	let givenMemberId = await Membership.findOne({
+		where: {
+			userId: memberId,
+			groupId: specificGroup.id,
+		},
+		attributes: { exclude: ["createdAt", "updatedAt"] },
+	});
+	if (!givenMemberId) {
+		res.status(404);
+		return res.json({
+			message: "Membership between the user and the group does not exits",
+			statusCode: 404,
+		});
+	}
+	console.log("USER IS FOUND", givenMemberId.toJSON());
+
+	//AUTHORIZATION
+	//currUserId === organizerId or currUserId === memberId
+	console.log("memberId:          ", memberId);
+	console.log("currUserId         ", currUserId);
+	if (currUserId === specificGroup.organizerId || currUserId === memberId) {
+		console.log("AUTHORIZED: Let's delete this Membership");
+		await givenMemberId.destroy();
+		return res.json({
+			message: "Successfully deleted membership from group",
+		});
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not Authorized";
+		return next(err);
+	}
+});
 
 module.exports = router;
