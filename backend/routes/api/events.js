@@ -574,4 +574,80 @@ router.post("/:eventId/attendance", requireAuth, async (req, res, next) => {
 	}
 });
 
+// Change the status of an attendance for an event specified by id
+router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
+	const eventId = Number(req.params.eventId);
+	const currUserId = req.user.id;
+	const { userId, status } = req.body;
+	const specificEvent = await Event.findByPk(eventId);
+	//Error response: Couldn't find an Event with the specified id
+	if (!specificEvent) {
+		res.status(404);
+		return res.json({
+			message: "Event couldn't be found",
+			statusCode: 404,
+		});
+	}
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
+	const specificAttendance = await Attendance.findOne({
+		where: {
+			eventId: eventId,
+			userId: userId,
+		},
+		attributes: ["id", "eventId", "userId", "status"],
+	});
+	const isOrganizer = currUserId === specificGroup.organizerId;
+	console.log("isOrganizer????:    ", isOrganizer);
+	// findout if cohost
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const coHostsIDs = coHostsPOJO.map((member) => member.userId);
+	console.log("cohosts:       ", coHostsIDs);
+	const iscoHost = coHostsIDs.includes(currUserId);
+	console.log("currUserId:       ", currUserId);
+	console.log("iscoHost?????:    ", iscoHost);
+	//AUTHORIZATION: either organizer or co-host status
+	if (isOrganizer || iscoHost) {
+		//Error response: If changing the attendance status to "pending".
+		if (status === "pending") {
+			res.status = 400;
+			return res.json({
+				message: "Cannot change an attendance status to pending",
+				statusCode: 400,
+			});
+		}
+		//Error response: If attendance does not exist
+		if (!specificAttendance) {
+			res.status = 404;
+			return res.json({
+				message: "Attendance between the user and the event does not exist",
+				statusCode: 404,
+			});
+		}
+
+		const updateAttendance = await specificAttendance.update({
+			status: status,
+		});
+
+		return res.json(updateAttendance);
+	} else {
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not Authorized";
+		return next(err);
+	}
+});
+
 module.exports = router;
