@@ -10,6 +10,7 @@ const {
 } = require("../../db/models");
 const { requireAuth } = require("../../utils/auth");
 const router = express.Router();
+const { Op } = require("sequelize");
 
 router.get("/", async (req, res, next) => {
 	const payload = [];
@@ -465,6 +466,112 @@ router.get("/:eventId/attendees", async (req, res, next) => {
 	return res.json({
 		Attendees: usersInfoPOJO,
 	});
+});
+
+//Request to Attend an Event based on the Event's id
+router.post("/:eventId/attendance", requireAuth, async (req, res, next) => {
+	const eventId = Number(req.params.eventId);
+	const currUserId = req.user.id;
+	const specificEvent = await Event.findByPk(eventId);
+	if (!specificEvent) {
+		res.status(404);
+		return res.json({
+			message: "Event couldn't be found",
+			statusCode: 404,
+		});
+	}
+
+	//AUTHORIZATION: currUser must be member of the group
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
+	const allMembers = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+			status: "member",
+		},
+	});
+	const allMembersPOJO = [];
+	for (let member of allMembers) {
+		allMembersPOJO.push(member.toJSON());
+	}
+	// findout if cohost
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const coHostsIDs = coHostsPOJO.map((member) => member.userId);
+	console.log("cohosts:       ", coHostsIDs);
+
+	console.log("ALL MEMBERS    ", allMembersPOJO);
+	console.log("CURRENT USER ID", currUserId);
+	const allMembersIDs = allMembersPOJO.map((member) => member.userId);
+	console.log("ALL MEMBERS IDs: ", allMembersIDs);
+	console.log("ORGANIZER ID:   ", specificGroup.organizerId);
+
+	//              : You are already host of the event
+	if (
+		currUserId === specificGroup.organizerId ||
+		coHostsIDs.includes(currUserId)
+	) {
+		res.status(404);
+		return res.json({
+			message: "User is already a host status",
+			statusCode: 400,
+		});
+	}
+	const currUserAttendance = await Attendance.findOne({
+		where: {
+			eventId: specificEvent.id,
+			userId: currUserId,
+		},
+	});
+	if (currUserAttendance) {
+		//Error response: Current User already has a pending attendance for the event
+		if (currUserAttendance.status === "pending") {
+			res.status(400);
+			return res.json({
+				message: "Attendance has already been requested",
+				statusCode: 400,
+			});
+		}
+		//Error response: Current User is already an accepted attendee of the event
+		if (currUserAttendance.status === "attending") {
+			res.status(400);
+			return res.json({
+				message: "User is already an attendee of the event",
+				statusCode: 400,
+			});
+		}
+	}
+
+	if (allMembersIDs.includes(currUserId)) {
+		console.log("I am a member and I can request attendance");
+		const resultPayload = {};
+		const requestAttendance = await Attendance.create({
+			eventId: eventId,
+			userId: currUserId,
+			status: "pending",
+		});
+		resultPayload.userId = requestAttendance.userId;
+		resultPayload.eventId = requestAttendance.eventId;
+		resultPayload.status = requestAttendance.status;
+		return res.json(resultPayload);
+	} else {
+		// not a member of the Group
+		const err = new Error("");
+		err.status = 403;
+		err.message = "Not Authorized: you are not a member of the group";
+		return next(err);
+	}
 });
 
 module.exports = router;
