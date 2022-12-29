@@ -386,4 +386,85 @@ router.put("/:eventId", requireAuth, async (req, res, next) => {
 	}
 });
 
+// Get all Attendees of an Event specified by its id
+router.get("/:eventId/attendees", async (req, res, next) => {
+	const eventId = Number(req.params.eventId);
+	const currUserId = req.user ? req.user.id : null;
+	const specificEvent = await Event.findByPk(eventId);
+	//Error response: Couldn't find an Event with the specified id
+	if (!specificEvent) {
+		res.status(404);
+		return res.json({
+			message: "Event couldn't be found",
+			statusCode: 404,
+		});
+	}
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
+	// findout if cohost
+	const coHosts = await Membership.findAll({
+		where: {
+			groupId: specificGroup.id,
+			status: "co-host",
+		},
+	});
+	const coHostsPOJO = [];
+	for (let member of coHosts) {
+		coHostsPOJO.push(member.toJSON());
+	}
+	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
+	console.log("authorizedMembers:    ", authorizedMemberIds);
+
+	let allAttendances = await Attendance.findAll({
+		where: {
+			eventId: eventId,
+		},
+	});
+	const allAttendancesPOJO = [];
+	for (let attendance of allAttendances) {
+		allAttendancesPOJO.push(attendance.toJSON());
+	}
+	// console.log("allAttendancesPOJO", allAttendancesPOJO);
+
+	const usersInfoPOJO = [];
+	for (let attendance of allAttendancesPOJO) {
+		const userId = attendance.userId;
+		const allUserInfos = await User.findAll({
+			where: {
+				id: userId,
+			},
+			attributes: ["id", "firstName", "lastName"],
+		});
+		for (let user of allUserInfos) {
+			user = user.toJSON();
+			//AUTHORIZATION
+			//cohost or organizer -----> show all status including(pending);
+			if (
+				currUserId === specificGroup.organizerId ||
+				authorizedMemberIds.includes(currUserId)
+			) {
+				console.log("I am organizer or co-host");
+				console.log("currUserId:  ", currUserId);
+				user.Attendance = { status: attendance.status };
+				usersInfoPOJO.push(user);
+			} else {
+				//if not----> don't show (pending)
+				console.log("do not show add pending attendees to resultPayload");
+				console.log("currUserId:  ", currUserId);
+				console.log("STATUS", attendance.status);
+				if (attendance.status !== "pending") {
+					user.Attendance = { status: attendance.status };
+					usersInfoPOJO.push(user);
+				}
+			}
+		}
+	}
+	return res.json({
+		Attendees: usersInfoPOJO,
+	});
+});
+
 module.exports = router;

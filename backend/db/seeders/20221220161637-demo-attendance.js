@@ -28,11 +28,26 @@ module.exports = {
 				{
 					eventId: 2,
 					userId: 2,
-					status: "not-attending",
+					status: "attending",
 				},
 				{
 					eventId: 3,
 					userId: 3,
+					status: "attending",
+				},
+				{
+					eventId: 1,
+					userId: 4,
+					status: "pending",
+				},
+				{
+					eventId: 2,
+					userId: 5,
+					status: "pending",
+				},
+				{
+					eventId: 3,
+					userId: 6,
 					status: "pending",
 				},
 			],
