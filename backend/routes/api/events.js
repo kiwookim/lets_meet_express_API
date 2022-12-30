@@ -598,7 +598,8 @@ router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
 			eventId: eventId,
 			userId: userId,
 		},
-		attributes: ["id", "eventId", "userId", "status"],
+		// attributes: ["id", "eventId", "userId", "status"],
+		attributes: { exclude: ["updatedAt", "createdAt"] },
 	});
 	const isOrganizer = currUserId === specificGroup.organizerId;
 	console.log("isOrganizer????:    ", isOrganizer);
@@ -636,12 +637,16 @@ router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
 				statusCode: 404,
 			});
 		}
-
-		const updateAttendance = await specificAttendance.update({
+		const resultPayload = {};
+		let updateAttendance = await specificAttendance.update({
 			status: status,
 		});
-
-		return res.json(updateAttendance);
+		updateAttendance = updateAttendance.toJSON();
+		resultPayload.id = updateAttendance.id;
+		resultPayload.eventId = updateAttendance.eventId;
+		resultPayload.userId = updateAttendance.userId;
+		resultPayload.status = updateAttendance.status;
+		return res.json(resultPayload);
 	} else {
 		const err = new Error("");
 		err.status = 403;
