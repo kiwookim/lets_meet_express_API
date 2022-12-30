@@ -650,4 +650,9 @@ router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
 	}
 });
 
+//Delete attendance to an event specified by id
+router.delete("/:eventId/attendance", requireAuth, async (req, res, next) => {
+	console.log("debug two previous routes");
+});
+
 module.exports = router;
