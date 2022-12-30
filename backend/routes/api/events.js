@@ -417,11 +417,11 @@ router.get("/:eventId/attendees", async (req, res, next) => {
 		coHostsPOJO.push(member.toJSON());
 	}
 	const authorizedMemberIds = coHostsPOJO.map((member) => member.userId);
-	console.log("authorizedMembers:    ", authorizedMemberIds);
+	// console.log("authorizedMembers:    ", authorizedMemberIds);
 
 	let allAttendances = await Attendance.findAll({
 		where: {
-			eventId: eventId,
+			eventId: specificEvent.id,
 		},
 	});
 	const allAttendancesPOJO = [];
@@ -432,10 +432,10 @@ router.get("/:eventId/attendees", async (req, res, next) => {
 
 	const usersInfoPOJO = [];
 	for (let attendance of allAttendancesPOJO) {
-		const userId = attendance.userId;
+		// const userId = attendance.userId;
 		const allUserInfos = await User.findAll({
 			where: {
-				id: userId,
+				id: attendance.userId,
 			},
 			attributes: ["id", "firstName", "lastName"],
 		});
