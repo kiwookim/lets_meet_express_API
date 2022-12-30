@@ -68,7 +68,7 @@ module.exports = {
 			options,
 			{
 				userId: {
-					[Op.in]: [1, 2, 3],
+					[Op.in]: [1, 2, 3, 4, 5, 6],
 				},
 			},
 			{}
