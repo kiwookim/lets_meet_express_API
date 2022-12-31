@@ -13,12 +13,96 @@ const router = express.Router();
 const { Op } = require("sequelize");
 
 router.get("/", async (req, res, next) => {
+	//query filters
+	const pagination = {};
+	const whereClause = {};
+	const queryValidationErrors = {};
+	let { page, size, name, type, startDate } = req.query;
+	//body error handling here
+	if (page && page < 1)
+		queryValidationErrors.page = "Page must be greater than or equal to 1";
+	if (size && size < 1)
+		queryValidationErrors.size = "Size must be greater than or equal to 1";
+	if (name) {
+		const integers = "0123456789";
+		for (let char of name) {
+			if (integers.includes(char)) {
+				queryValidationErrors.name = "Name must be a string";
+			}
+		}
+	}
+	if (type) {
+		const choices = ["In person", "Online"];
+		if (!choices.includes(type)) {
+			queryValidationErrors.type = "Type must be 'Online' or 'In person'";
+		}
+	}
+	if (startDate) {
+		const inputDate = new Date(startDate).getTime();
+		// console.log(inputDate);
+		const formattedDate = startDate.split(" ")[0].split("-");
+		// console.log(formattedDate);
+		if (
+			formattedDate.length < 3 ||
+			isNaN(inputDate) ||
+			formattedDate.includes("")
+		) {
+			queryValidationErrors.startDate = "Start date must be a valid datetime";
+		}
+	}
+	if (Object.keys(queryValidationErrors).length) {
+		res.status(400);
+		return res.json({
+			message: "Validation Error",
+			statusCode: 400,
+			errors: queryValidationErrors,
+		});
+	}
+	//whereCluase
+	if (name) {
+		whereClause.name = { [Op.substring]: name };
+	}
+	if (type) {
+		whereClause.type = type;
+	}
+	if (startDate) {
+		whereClause.startDate = { [Op.substring]: startDate };
+	}
+
+	//default page and size values
+	if (!page) {
+		page = 1;
+	} else {
+		if (page > 10) {
+			page = 10;
+		}
+	}
+	if (!size) {
+		size = 20;
+	} else {
+		if (size > 20) {
+			size = 20;
+		}
+	}
+	page = Number(page);
+	size = Number(size);
+	console.log("PAGE", page);
+	console.log("SIZE", size);
+	pagination.limit = size;
+	pagination.offset = size * (page - 1);
+	console.log("PAGINATION:     ", pagination);
+	console.log("Where CLAUSE:   ", whereClause);
+
+	//actual resultPayloads
 	const payload = [];
 	const events = await Event.findAll({
 		attributes: {
 			exclude: ["description", "capacity", "price", "createdAt", "updatedAt"],
 		},
+		where: whereClause,
+		...pagination,
 	});
+
 	for (let event of events) {
 		event = event.toJSON();
 		event.numAttending = await Attendance.count({
@@ -657,7 +741,56 @@ router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
 
 //Delete attendance to an event specified by id
 router.delete("/:eventId/attendance", requireAuth, async (req, res, next) => {
-	console.log("debug two previous routes");
+	const currUserId = req.user.id;
+	const eventId = Number(req.params.eventId);
+	const specificEvent = await Event.findByPk(eventId);
+	const { userId } = req.body;
+	//Sample Body: {"userId": 1}
+	//Error response: Couldn't find an Event with the specified id
+	if (!specificEvent) {
+		res.status(404);
+		return res.json({
+			message: "Event couldn't be found",
+			statusCode: 404,
+		});
+	}
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
+	const specificAttendance = await Attendance.findOne({
+		where: {
+			eventId: specificEvent.id,
+			userID: userId,
+		},
+	});
+	console.log("currUserId:       ", currUserId);
+	console.log("specificGroup:     ", specificGroup.toJSON());
+	//AUTHORIZATION : Host of the group or currUser === given userId
+	if (currUserId === specificGroup.organizerId || currUserId === userId) {
+		console.log('AUTHORIZED": DO SOMETHING');
+		//Error response: Attendance does not exist for this User
+		if (!specificAttendance) {
+			res.status(404);
+			return res.json({
+				message: "Attendance does not exist for this User",
+				statusCode: 404,
+			});
+		}
+		console.log("specificAttendance:", specificAttendance.toJSON());
+		await specificAttendance.destroy();
+		return res.json({
+			message: "Successfully deleted attendance from event",
+		});
+	} else {
+		//Error response: Only the User or organizer may delete an Attendance
+		res.status(403);
+		return res.json({
+			message: "Only the User or organizer may delete an Attendance",
+			statusCode: 403,
+		});
+	}
 });
 
 module.exports = router;
