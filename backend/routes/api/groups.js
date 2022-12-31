@@ -13,6 +13,7 @@ const {
 	EventImage,
 } = require("../../db/models");
 const { restoreUser, requireAuth } = require("../../utils/auth");
+const { Op } = require("sequelize");
 
 router.get("/", async (req, res) => {
 	const payload = [];
@@ -47,11 +48,11 @@ router.get("/", async (req, res) => {
 
 router.get("/current", requireAuth, async (req, res) => {
 	const currUserId = req.user.id;
-	const currUserGroups = await Group.findAll({
+	const currUSerOrganized = await Group.findAll({
 		where: { organizerId: currUserId },
 	});
 	const payload = [];
-	for (let group of currUserGroups) {
+	for (let group of currUSerOrganized) {
 		group = group.toJSON();
 		group.numMembers = await Membership.count({
 			where: {
@@ -59,15 +60,6 @@ router.get("/current", requireAuth, async (req, res) => {
 				status: "member",
 			},
 		});
-		// const url = await GroupImage.findOne({
-		// 	where: {
-		// 		groupId: group.id,
-		// 	},
-		// 	attributes: ["url"],
-		// });
-		// if (url) {
-		// 	group.previewImage = url.url;
-		// }
 		let url = await GroupImage.findAll({
 			where: {
 				groupId: group.id,
@@ -84,8 +76,47 @@ router.get("/current", requireAuth, async (req, res) => {
 
 		payload.push(group);
 	}
+	const membershipInfos = await Membership.findAll({
+		where: {
+			userId: currUserId,
+			[Op.or]: [{ status: "member" }, { status: "co-host" }],
+		},
+	});
+	// not a organizer but JOINED group as a 'member' or 'co-host'
+	for (let member of membershipInfos) {
+		member = member.toJSON();
+		const specificGroup = await Group.findOne({
+			where: {
+				id: member.groupId,
+			},
+		});
+		specificGroup.numMembers = await Membership.count({
+			where: {
+				groupId: specificGroup.id,
+				status: "member",
+			},
+		});
+		let url = await GroupImage.findAll({
+			where: {
+				groupId: specificGroup.id,
+				preview: true,
+			},
+			attributes: ["url"],
+		});
+		const lastPreviewImg = url[url.length - 1];
+		if (url.length) {
+			specificGroup.previewImage = lastPreviewImg.url;
+		} else {
+			specificGroup.previewImage = "No Preview Image Available";
+		}
+
+		payload.push(specificGroup);
+	}
+
 	return res.json({ Groups: payload });
 });
+
+//Get details of a Group from an id
 router.get("/:groupId", async (req, res, next) => {
 	const groupId = req.params.groupId;
 	//find Group by id

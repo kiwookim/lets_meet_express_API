@@ -10,6 +10,12 @@ const router = express.Router();
 // backend/routes/api/users.js
 const validateSignup = [
 	// also validate firstName and lastName
+	check("firstName")
+		.exists({ checkFalsy: true })
+		.withMessage("first name is required"),
+	check("lastName")
+		.exists({ checkFalsy: true })
+		.withMessage("last name is required"),
 	check("email")
 		.exists({ checkFalsy: true })
 		.isEmail()
@@ -29,17 +35,23 @@ const validateSignup = [
 // Sign up
 router.post("/", validateSignup, async (req, res, next) => {
 	const { firstName, lastName, email, password, username } = req.body;
-	if (firstName === "") {
-		const err = new Error("first name is required");
-		err.status = 400;
-		next(err);
+
+	const specificUser = await User.findOne({
+		where: {
+			username: username,
+		},
+	});
+	if (specificUser) {
+		res.status(403);
+		return res.json({
+			message: "User already exists",
+			statusCode: 403,
+			errors: {
+				email: "User with that email already exists",
+			},
+		});
 	}
-	if (lastName === "") {
-		const err = new Error("last name is required");
-		err.status = 400;
-		next(err);
-	}
-	const user = await User.signup({
+	let user = await User.signup({
 		firstName,
 		lastName,
 		email,
@@ -48,9 +60,11 @@ router.post("/", validateSignup, async (req, res, next) => {
 	});
 
 	let token = await setTokenCookie(res, user);
-	user.dataValues.token = token;
+	user = user.toJSON();
+
+	user.token = token;
 	return res.json({
-		...user.dataValues,
+		...user,
 	});
 });
 
