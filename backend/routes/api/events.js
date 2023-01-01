@@ -762,7 +762,7 @@ router.delete("/:eventId/attendance", requireAuth, async (req, res, next) => {
 	const specificAttendance = await Attendance.findOne({
 		where: {
 			eventId: specificEvent.id,
-			userID: userId,
+			userId: userId,
 		},
 	});
 	console.log("currUserId:       ", currUserId);
