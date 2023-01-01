@@ -21,34 +21,19 @@ module.exports = {
 			options,
 			[
 				{
-					eventId: 1,
+					eventId: 2,
 					userId: 1,
 					status: "attending",
 				},
 				{
-					eventId: 2,
+					eventId: 3,
 					userId: 2,
 					status: "attending",
 				},
 				{
-					eventId: 3,
+					eventId: 1,
 					userId: 3,
 					status: "attending",
-				},
-				{
-					eventId: 1,
-					userId: 4,
-					status: "pending",
-				},
-				{
-					eventId: 2,
-					userId: 5,
-					status: "pending",
-				},
-				{
-					eventId: 3,
-					userId: 6,
-					status: "pending",
 				},
 			],
 			{}
@@ -68,7 +53,7 @@ module.exports = {
 			options,
 			{
 				userId: {
-					[Op.in]: [1, 2, 3, 4, 5, 6],
+					[Op.in]: [1, 2, 3],
 				},
 			},
 			{}
