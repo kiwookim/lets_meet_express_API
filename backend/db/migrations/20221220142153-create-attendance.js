@@ -20,7 +20,7 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Events",
-						key: "eventId",
+						key: "id",
 					},
 					onDelete: "cascade",
 				},
@@ -29,7 +29,7 @@ module.exports = {
 					allowNull: false,
 					references: {
 						model: "Users",
-						key: "userId",
+						key: "id",
 					},
 					onDelete: "cascade",
 				},
