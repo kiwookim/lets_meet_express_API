@@ -150,8 +150,9 @@ router.get("/", async (req, res, next) => {
 		Events: payload,
 	});
 });
+//Get details of an Event specified by its id
 router.get("/:eventId", async (req, res, next) => {
-	const eventId = req.params.eventId;
+	const eventId = Number(req.params.eventId);
 	let specificEvent = await Event.findOne({
 		where: {
 			id: eventId,
@@ -160,9 +161,11 @@ router.get("/:eventId", async (req, res, next) => {
 	});
 	// event cannot be found
 	if (!specificEvent) {
-		const err = new Error("");
-		(err.message = "Event could not be found"), (err.status = 404);
-		return next(err);
+		res.status(404);
+		return res.json({
+			message: "Event couldn't be found",
+			statusCode: 404,
+		});
 	}
 	const numOfAttendees = await Attendance.count({
 		where: {
@@ -200,11 +203,6 @@ router.get("/:eventId", async (req, res, next) => {
 router.post("/:eventId/images", requireAuth, async (req, res, next) => {
 	const eventId = Number(req.params.eventId);
 	const specificEvent = await Event.findByPk(eventId);
-	const specificGroup = await Group.findOne({
-		where: {
-			id: specificEvent.groupId,
-		},
-	});
 	const currUserId = req.user.id;
 	if (!specificEvent) {
 		res.status(404);
@@ -213,6 +211,11 @@ router.post("/:eventId/images", requireAuth, async (req, res, next) => {
 			statusCode: 404,
 		});
 	}
+	const specificGroup = await Group.findOne({
+		where: {
+			id: specificEvent.groupId,
+		},
+	});
 	//CurrUser must be an attendee
 	//if currUSer is in list of attendees list-> authorized
 	const attendees = await Attendance.findAll({
@@ -271,10 +274,11 @@ router.post("/:eventId/images", requireAuth, async (req, res, next) => {
 		newImgPayload.preview = newImage.preview;
 		return res.json(newImgPayload);
 	} else {
-		const err = new Error("");
-		err.status = 403;
-		err.message = "NOT, authorized";
-		return next(err);
+		res.status(403);
+		return res.json({
+			message: "Forbidden",
+			statusCode: 403,
+		});
 	}
 });
 //Delete an Event specified by its id
@@ -323,10 +327,8 @@ router.delete("/:eventId", requireAuth, async (req, res, next) => {
 			message: "Successfully deleted",
 		});
 	} else {
-		const err = new Error("");
-		err.status = 403;
-		err.message = "NOT, authorized";
-		return next(err);
+		res.status(403);
+		return res.json({ message: "Forbidden", statusCode: 403 });
 	}
 });
 
@@ -464,10 +466,8 @@ router.put("/:eventId", requireAuth, async (req, res, next) => {
 		});
 		return res.json(updatedEvent);
 	} else {
-		const err = new Error("");
-		err.status = 403;
-		err.message = "NOT, authorized";
-		return next(err);
+		res.status(403);
+		return res.json({ message: "Forbidden", statusCode: 403 });
 	}
 });
 

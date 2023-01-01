@@ -20,7 +20,7 @@ const validateVenue = [
 ];
 //Edit a Venue specified by its id
 router.put("/:venueId", requireAuth, validateVenue, async (req, res, next) => {
-	const venueId = req.params.venueId;
+	const venueId = Number(req.params.venueId);
 	const currUserId = req.user.id;
 	const specificVenue = await Venue.findOne({
 		where: {
@@ -30,10 +30,11 @@ router.put("/:venueId", requireAuth, validateVenue, async (req, res, next) => {
 	});
 
 	if (!specificVenue) {
-		const err = new Error("");
-		err.status = 404;
-		err.message = "Venue could not be found";
-		return next(err);
+		res.status(404);
+		return res.json({
+			message: "Venue couldn't be found",
+			statusCode: 404,
+		});
 	}
 	const associatedGroup = await Group.findOne({
 		where: {
@@ -52,27 +53,30 @@ router.put("/:venueId", requireAuth, validateVenue, async (req, res, next) => {
 	}
 	const cohostIDs = cohostListPOJO.map((member) => member.userId);
 
-	//currUser must be Organizer and Co-Host status
 	if (
-		currUserId !== associatedGroup.organizerId &&
-		!cohostIDs.includes(currUserId)
+		currUserId === associatedGroup.organizerId ||
+		cohostIDs.includes(currUserId)
 	) {
-		const err = new Error("");
-		err.status = 403;
-		err.message = "Not authorized";
-		return next(err);
+		const { address, city, state, lat, lng } = req.body;
+		const resultPayload = {};
+		let updatedVenue = await specificVenue.update({
+			address,
+			city,
+			state,
+			lat,
+			lng,
+		});
+		updatedVenue = updatedVenue.toJSON();
+		for (let key in updatedVenue) {
+			if (key !== "createdAt" && key !== "updatedAt") {
+				resultPayload[key] = updatedVenue[key];
+			}
+		}
+		return res.json(resultPayload);
+	} else {
+		res.status(403);
+		return res.json({ message: "Forbidden", statusCode: 403 });
 	}
-
-	//if passes through error handler --> AUTHORIZED
-	const { address, city, state, lat, lng } = req.body;
-	const updatedVenue = await specificVenue.update({
-		address,
-		city,
-		state,
-		lat,
-		lng,
-	});
-	return res.json(updatedVenue);
 });
 
 module.exports = router;
