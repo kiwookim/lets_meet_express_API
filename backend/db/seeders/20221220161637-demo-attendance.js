@@ -20,19 +20,49 @@ module.exports = {
 		return queryInterface.bulkInsert(
 			options,
 			[
+				// {
+				// 	eventId: 2,
+				// 	userId: 1,
+				// 	status: "attending",
+				// },
+				// {
+				// 	eventId: 3,
+				// 	userId: 2,
+				// 	status: "attending",
+				// },
+				// {
+				// 	eventId: 1,
+				// 	userId: 3,
+				// 	status: "attending",
+				// },
 				{
-					eventId: 2,
+					eventId: 1,
 					userId: 1,
 					status: "attending",
 				},
 				{
-					eventId: 3,
+					eventId: 2,
 					userId: 2,
 					status: "attending",
 				},
 				{
-					eventId: 1,
+					eventId: 3,
 					userId: 3,
+					status: "attending",
+				},
+				{
+					eventId: 1,
+					userId: 4,
+					status: "attending",
+				},
+				{
+					eventId: 2,
+					userId: 5,
+					status: "attending",
+				},
+				{
+					eventId: 3,
+					userId: 6,
 					status: "attending",
 				},
 			],
@@ -53,7 +83,7 @@ module.exports = {
 			options,
 			{
 				userId: {
-					[Op.in]: [1, 2, 3],
+					[Op.in]: [1, 2, 3, 4, 5, 6],
 				},
 			},
 			{}
