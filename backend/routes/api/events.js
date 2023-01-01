@@ -454,7 +454,8 @@ router.put("/:eventId", requireAuth, async (req, res, next) => {
 		currUserId === specificGroup.organizerId ||
 		authorizedMemberIds.includes(currUserId)
 	) {
-		const updatedEvent = await specificEvent.update({
+		const resultPayload = {};
+		let updatedEvent = await specificEvent.update({
 			venueId,
 			name,
 			type,
@@ -464,7 +465,13 @@ router.put("/:eventId", requireAuth, async (req, res, next) => {
 			startDate,
 			endDate,
 		});
-		return res.json(updatedEvent);
+		updatedEvent = updatedEvent.toJSON();
+		for (let key in updatedEvent) {
+			if (key !== "updatedAt") {
+				resultPayload[key] = updatedEvent[key];
+			}
+		}
+		return res.json(resultPayload);
 	} else {
 		res.status(403);
 		return res.json({ message: "Forbidden", statusCode: 403 });
