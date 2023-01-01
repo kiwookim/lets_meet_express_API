@@ -14,7 +14,7 @@ const {
 } = require("../../db/models");
 const { restoreUser, requireAuth } = require("../../utils/auth");
 const { Op } = require("sequelize");
-
+//Get all Groups
 router.get("/", async (req, res) => {
 	const payload = [];
 	const allGroups = await Group.findAll();
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 		group.numMembers = await Membership.count({
 			where: {
 				groupId: group.id,
-				status: "member",
+				[Op.or]: [{ status: "member" }, { status: "co-host" }],
 			},
 		});
 		let url = await GroupImage.findAll({
@@ -140,7 +140,7 @@ router.get("/:groupId", async (req, res, next) => {
 	thisGroup.numMembers = await Membership.count({
 		where: {
 			groupId: groupId,
-			status: "member",
+			[Op.or]: [{ status: "member" }, { status: "co-host" }],
 		},
 	});
 	//get associated GroupImage data
@@ -215,6 +215,11 @@ router.post(
 			city,
 			state,
 			organizerId: Number(req.user.id),
+		});
+		const newMembership = await Membership.create({
+			userId: req.user.id,
+			groupId: newGroup.id,
+			status: "co-host",
 		});
 		res.statusCode = 201;
 		return res.json(newGroup);
@@ -646,7 +651,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 		currUserId === specificGroup.organizerId ||
 		authorizedMemberIds.includes(currUserId)
 	) {
-		const newEvent = await Event.create({
+		let newEvent = await Event.create({
 			venueId,
 			groupId: groupId,
 			name,
@@ -657,12 +662,18 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 			startDate,
 			endDate,
 		});
+		let newAttendance = await Attendance.create({
+			eventId: newEvent.id,
+			userId: currUserId,
+			status: "attending",
+		});
+		newEvent = newEvent.toJSON();
 		const newEventResponse = {};
-		for (let key in newEvent.toJSON()) {
-			if (key === "createdAt" || key === "updatedAt") {
-				break;
+
+		for (let key in newEvent) {
+			if (key !== "createdAt" || key !== "updatedAt") {
+				newEventResponse[key] = newEvent[key];
 			}
-			newEventResponse[key] = newEvent[key];
 		}
 		return res.json(newEventResponse);
 	} else {
@@ -720,14 +731,18 @@ router.get("/:groupId/members", async (req, res, next) => {
 			//Successful Response: If you ARE the organizer or a co-host of the group.
 			//Shows all members and their statuses.
 			userInfo.Membership = { status: member.status };
-
 			console.log("AUTHORIZED: organizer or co-host", "--> show all statuses");
 		} else {
 			//Successful Response: If you ARE NOT the organizer of the group.
 			//Shows only members that don't have a status of "pending"
-			if (member.status !== "pending")
+			console.log(member.status);
+			if (member.status !== "pending") {
 				userInfo.Membership = { status: member.status };
+			} else {
+				break;
+			}
 		}
+		console.log(userInfo);
 		allMembersInfo.push(userInfo);
 	}
 	return res.json({
