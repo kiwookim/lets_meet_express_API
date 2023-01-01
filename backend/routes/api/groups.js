@@ -576,7 +576,6 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 		startDate,
 		endDate,
 	} = req.body;
-
 	//Event Body Validation
 	const validationErrors = {};
 	const foundVenue = await Venue.findByPk(venueId);
@@ -642,6 +641,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 		});
 	}
 	// end of event validation
+	console.log(price, "PRICE");
 	if (
 		currUserId === specificGroup.organizerId ||
 		authorizedMemberIds.includes(currUserId)
@@ -652,7 +652,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 			name,
 			capacity,
 			type,
-			price,
+			price: price,
 			description,
 			startDate,
 			endDate,
