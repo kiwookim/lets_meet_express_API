@@ -35,11 +35,16 @@ router.post("/", validateLogin, async (req, res, next) => {
 
 	// ki cocde
 	if (!user) {
-		const err = new Error("Invalid credentials");
-		err.status = 401;
-		err.title = "Invalid credentials";
-		err.message = "Invalid credentials";
-		return next(err);
+		// const err = new Error("Invalid credentials");
+		// err.status = 401;
+		// err.title = "Invalid credentials";
+		// err.message = "Invalid credentials";
+		// return next(err);
+		res.status(401);
+		return res.json({
+			message: "Invalid credentials",
+			statusCode: 401,
+		});
 	}
 
 	await setTokenCookie(res, user);

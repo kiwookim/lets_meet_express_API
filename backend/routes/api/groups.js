@@ -652,7 +652,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 			name,
 			capacity,
 			type,
-			price: price,
+			price: Number(price),
 			description,
 			startDate,
 			endDate,
