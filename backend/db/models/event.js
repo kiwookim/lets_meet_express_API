@@ -17,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
 			Event.belongsToMany(models.User, {
 				through: models.Attendance,
 				foreignKey: "eventId",
-				// otherKey: "userId",
+				otherKey: "userId",
 			});
 
 			//also act as a join table to Group and Venue
