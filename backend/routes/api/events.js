@@ -714,7 +714,7 @@ router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
 	if (isOrganizer || iscoHost) {
 		//Error response: If changing the attendance status to "pending".
 		if (status === "pending") {
-			res.status = 400;
+			res.status(400);
 			return res.json({
 				message: "Cannot change an attendance status to pending",
 				statusCode: 400,
@@ -722,7 +722,7 @@ router.put("/:eventId/attendance", requireAuth, async (req, res, next) => {
 		}
 		//Error response: If attendance does not exist
 		if (!specificAttendance) {
-			res.status = 404;
+			res.status(404);
 			return res.json({
 				message: "Attendance between the user and the event does not exist",
 				statusCode: 404,
