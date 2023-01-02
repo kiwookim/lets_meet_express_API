@@ -57,7 +57,7 @@ router.get("/current", requireAuth, async (req, res) => {
 		group.numMembers = await Membership.count({
 			where: {
 				groupId: group.id,
-				status: "member",
+				[Op.or]: [{ status: "member" }, { status: "co-host" }],
 			},
 		});
 		let url = await GroupImage.findAll({
@@ -79,12 +79,14 @@ router.get("/current", requireAuth, async (req, res) => {
 	const membershipInfos = await Membership.findAll({
 		where: {
 			userId: currUserId,
-			[Op.or]: [{ status: "member" }, { status: "co-host" }],
+			// [Op.or]: [{ status: "member" }, { status: "co-host" }],
+			status: "member",
 		},
 	});
 	// not a organizer but JOINED group as a 'member' or 'co-host'
 	for (let member of membershipInfos) {
 		member = member.toJSON();
+		console.log(member);
 		const specificGroup = await Group.findOne({
 			where: {
 				id: member.groupId,
