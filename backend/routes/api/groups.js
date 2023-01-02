@@ -659,7 +659,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 			name,
 			capacity,
 			type,
-			price: Number(price),
+			price: +price,
 			description,
 			startDate,
 			endDate,
@@ -677,6 +677,7 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 				newEventResponse[key] = newEvent[key];
 			}
 		}
+		console.log(newEventResponse.price);
 		return res.json(newEventResponse);
 	} else {
 		res.status(403);
