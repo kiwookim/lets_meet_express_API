@@ -45,57 +45,54 @@ router.get("/", async (req, res) => {
 
 	return res.json({ Groups: payload });
 });
-
+//get groups joined or organized by currUser
 router.get("/current", requireAuth, async (req, res) => {
 	const currUserId = req.user.id;
-	const currUSerOrganized = await Group.findAll({
-		where: { organizerId: currUserId },
-	});
-	const payload = [];
-	for (let group of currUSerOrganized) {
-		group = group.toJSON();
-		group.numMembers = await Membership.count({
-			where: {
-				groupId: group.id,
-				[Op.or]: [{ status: "member" }, { status: "co-host" }],
-			},
-		});
-		let url = await GroupImage.findAll({
-			where: {
-				groupId: group.id,
-				preview: true,
-			},
-			attributes: ["url"],
-		});
-		const lastPreviewImg = url[url.length - 1];
-		if (url.length) {
-			group.previewImage = lastPreviewImg.url;
-		} else {
-			group.previewImage = "No Preview Image Available";
-		}
+	console.log("currUserId", currUserId);
 
-		payload.push(group);
-	}
+	// currUSerOrganized.numMembers = await Membership.count({
+	// 	where: {
+	// 		groupId: currUSerOrganized.id,
+	// 		[Op.or]: [{ status: "member" }, { status: "co-host" }],
+	// 	},
+	// });
+	// let url = await GroupImage.findAll({
+	// 	where: {
+	// 		groupId: currUSerOrganized.id,
+	// 		preview: true,
+	// 	},
+	// 	attributes: ["url"],
+	// });
+	// const lastPreviewImg = url[url.length - 1];
+	// if (url.length) {
+	// 	currUSerOrganized.previewImage = lastPreviewImg.url;
+	// } else {
+	// 	currUSerOrganized.previewImage = "No Preview Image Available";
+	// }
+
+	// payload.push(currUSerOrganized);
+
+	// groups joined or co-host
+	const payload = [];
 	const membershipInfos = await Membership.findAll({
 		where: {
 			userId: currUserId,
-			// [Op.or]: [{ status: "member" }, { status: "co-host" }],
-			status: "member",
+			[Op.or]: [{ status: "member" }, { status: "co-host" }],
 		},
 	});
-	// not a organizer but JOINED group as a 'member' or 'co-host'
 	for (let member of membershipInfos) {
 		member = member.toJSON();
 		console.log(member);
-		const specificGroup = await Group.findOne({
+		let specificGroup = await Group.findOne({
 			where: {
 				id: member.groupId,
 			},
 		});
+		specificGroup = specificGroup.toJSON();
 		specificGroup.numMembers = await Membership.count({
 			where: {
 				groupId: specificGroup.id,
-				status: "member",
+				[Op.or]: [{ status: "member" }, { status: "co-host" }],
 			},
 		});
 		let url = await GroupImage.findAll({
@@ -111,7 +108,6 @@ router.get("/current", requireAuth, async (req, res) => {
 		} else {
 			specificGroup.previewImage = "No Preview Image Available";
 		}
-
 		payload.push(specificGroup);
 	}
 
@@ -673,11 +669,11 @@ router.post("/:groupId/events", requireAuth, async (req, res, next) => {
 		const newEventResponse = {};
 
 		for (let key in newEvent) {
-			if (key !== "createdAt" || key !== "updatedAt") {
+			if (key !== "createdAt" && key !== "updatedAt") {
 				newEventResponse[key] = newEvent[key];
 			}
 		}
-		console.log(newEventResponse.price);
+
 		return res.json(newEventResponse);
 	} else {
 		res.status(403);
@@ -891,8 +887,8 @@ router.put("/:groupId/membership", requireAuth, async (req, res, next) => {
 	console.log(currUserId, "currUserId");
 	console.log(specificGroup.organizerId, "organizerId");
 	if (
-		currUserId === specificGroup.organizerId &&
-		!authorizedMemberIds.includes(currUserId)
+		currUserId === specificGroup.organizerId
+		// !authorizedMemberIds.includes(currUserId)
 	) {
 		const resultPayload = {};
 		let changeMembership = await givenMemberId.update({
